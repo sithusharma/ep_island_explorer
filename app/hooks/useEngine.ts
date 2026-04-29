@@ -10,12 +10,12 @@ import { useGameLoop } from "./useGameLoop";
 
 // ── Physics constants ─────────────────────────────────────────────────────
 
-const ACCEL = 320;
-const REV_ACCEL = 200;
-const TURN = 2.8;
-const FRICTION = 0.96;
-const MAX_SPD = 380;
-const FADE_DUR = 0.55; // seconds per fade direction
+const ACCEL     = 520;   // was 320  (+63%)
+const REV_ACCEL = 320;   // was 200  (+60%)
+const TURN      = 3.1;   // was 2.8  (snappier steering)
+const FRICTION  = 0.965; // was 0.96 (slightly less drag at high speed)
+const MAX_SPD   = 620;   // was 380  (+63%)
+const FADE_DUR  = 0.55;  // seconds per fade direction
 
 // ── Hook ──────────────────────────────────────────────────────────────────
 
@@ -124,23 +124,23 @@ export function useEngine(
       if (trigEntity?.trigger) {
         const t = trigEntity.trigger;
 
-        // Highway auto-transition
         if (t.type === "highway" && t.destination) {
           startTransition(t.destination);
+          setActiveTrigger(null);
+        } else {
+          // Update React state for UI overlays (zone, airport, jukebox)
+          setActiveTrigger((prev) => {
+            if (prev?.entityId === trigEntity.id) return prev;
+            return {
+              type: t.type,
+              name: t.name,
+              entityId: trigEntity.id,
+              destination: t.destination,
+            };
+          });
         }
-
-        // Update React state for UI overlays (zone, airport, jukebox)
-        setActiveTrigger((prev) => {
-          if (prev?.entityId === trigEntity.id) return prev;
-          return {
-            type: t.type,
-            name: t.name,
-            entityId: trigEntity.id,
-            destination: t.destination,
-          };
-        });
       } else {
-        setActiveTrigger((prev) => (prev === null ? null : null));
+        setActiveTrigger(null);
       }
     }
 

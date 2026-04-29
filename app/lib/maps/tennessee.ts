@@ -1,38 +1,249 @@
-import type { MapData } from "../types";
-const W = 2600, CX = W / 2, CY = W / 2;
+// ---------------------------------------------------------------------------
+// Tennessee Island — rustic mountain retreat with cabin, coaster & concert
+// ---------------------------------------------------------------------------
+
+import type { Entity, MapData, Shape } from "../types";
+
+const W  = 2000;
+const CX = W / 2;   // 1000
+const CY = W / 2;   // 1000
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+
+function dk(hex: string, n = 30): string {
+  const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - n);
+  const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - n);
+  const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - n);
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+/** Winding scenic road */
+function road(id: string, pts: number[]): Entity {
+  return {
+    id, x: 0, y: 0, layer: 2,
+    shapes: [
+      { type: "polyline", points: pts, color: "rgba(0,0,0,0.14)", width: 48, cap: "round", join: "round" },
+      { type: "polyline", points: pts, color: "#5d4e37",           width: 42, cap: "round", join: "round" },
+      { type: "polyline", points: pts, color: "#ffca28",           width: 2,  dash: [14, 10], cap: "butt", join: "round" },
+    ],
+  };
+}
+
+// ── Base terrain ──────────────────────────────────────────────────────────
+
+const ocean: Entity = {
+  id: "ocean", x: 0, y: 0, layer: 0,
+  shapes: [{ type: "rect", x: 0, y: 0, w: W, h: W, color: "#1a3a5e" }],
+};
+
+const island: Entity = {
+  id: "island", x: 0, y: 0, layer: 0,
+  shapes: [
+    { type: "ellipse", x: CX, y: CY, rx: 832, ry: 792, color: "#c5a87a" },   // Shore
+    { type: "ellipse", x: CX, y: CY, rx: 820, ry: 780, color: "#4caf50" },   // Grass
+    { type: "ellipse", x: CX, y: CY - 180, rx: 660, ry: 500, color: "#3d8b40", alpha: 0.4 }, // Dense northern forest
+  ],
+};
+
+// ── Mountain range (north) ────────────────────────────────────────────────
+
+const mountains: Entity[] = [
+  // Main centre peak
+  {
+    id: "mtn-main", x: CX, y: 330, layer: 1,
+    shapes: [
+      { type: "triangle", x1: -180, y1:  90, x2: 0, y2: -200, x3: 180, y3:  90, color: "#546e7a" },
+      { type: "triangle", x1: -165, y1:  90, x2: 0, y2: -185, x3: 165, y3:  90, color: "#607d8b" },
+      // Snow cap
+      { type: "triangle", x1: -48, y1: -130, x2: 0, y2: -200, x3: 48, y3: -130, color: "#eceff1" },
+      { type: "triangle", x1: -28, y1: -150, x2: 0, y2: -200, x3: 28, y3: -150, color: "#ffffff" },
+    ],
+  },
+  // Left peak
+  {
+    id: "mtn-left", x: 740, y: 390, layer: 1,
+    shapes: [
+      { type: "triangle", x1: -140, y1: 70, x2: 0, y2: -150, x3: 140, y3: 70, color: "#607d8b" },
+      { type: "triangle", x1: -38, y1: -90, x2: 0, y2: -150, x3: 38, y3: -90, color: "#eceff1" },
+    ],
+  },
+  // Right peak
+  {
+    id: "mtn-right", x: 1245, y: 410, layer: 1,
+    shapes: [
+      { type: "triangle", x1: -130, y1: 65, x2: 0, y2: -140, x3: 130, y3: 65, color: "#546e7a" },
+      { type: "triangle", x1: -32, y1: -82, x2: 0, y2: -140, x3: 32, y3: -82, color: "#eceff1" },
+    ],
+  },
+  // Forest foreground patches
+  {
+    id: "forest", x: 0, y: 0, layer: 1,
+    shapes: [
+      { type: "ellipse", x: 720, y: 580, rx: 70, ry: 45, color: "#2e7d32", alpha: 0.7 },
+      { type: "ellipse", x: 840, y: 560, rx: 55, ry: 38, color: "#388e3c", alpha: 0.6 },
+      { type: "ellipse", x: 1180, y: 570, rx: 65, ry: 42, color: "#2e7d32", alpha: 0.7 },
+      { type: "ellipse", x: 1300, y: 590, rx: 50, ry: 35, color: "#388e3c", alpha: 0.6 },
+      { type: "ellipse", x: 900, y: 530, rx: 40, ry: 30, color: "#1b5e20", alpha: 0.5 },
+    ],
+  },
+];
+
+// ── Roads ─────────────────────────────────────────────────────────────────
+
+const roads: Entity[] = [
+  road("main-ns",   [CX,  240, CX, 1760]),      // N–S spine
+  road("main-ew",   [240, CY, 1760,  CY]),      // E–W cross
+  road("scenic-w",  [700, CY, 460, 1100, 380, 1360]), // Scenic western loop
+];
+
+// ── Cabin ─────────────────────────────────────────────────────────────────
+// Detailed wooden log cabin with roof, chimney, porch and smoke
+
+const cabinShapes: Shape[] = [
+  // Porch deck
+  { type: "rect", x: -45, y: 28, w: 90, h: 18, color: "#4e342e", radius: 1 },
+  // Log walls
+  { type: "rect", x: -40, y: -32, w: 80, h: 68, color: "#6d4c41", radius: 2 },
+  // Horizontal log-line texture
+  { type: "line", x1: -40, y1: -16, x2: 40, y2: -16, color: "#4e342e", width: 2 },
+  { type: "line", x1: -40, y1:   0, x2: 40, y2:   0, color: "#4e342e", width: 2 },
+  { type: "line", x1: -40, y1:  16, x2: 40, y2:  16, color: "#4e342e", width: 2 },
+  // Left window
+  { type: "rect", x: -32, y: -22, w: 18, h: 14, color: "#80deea", radius: 1 },
+  { type: "line", x1: -23, y1: -22, x2: -23, y2: -8, color: "#4e342e", width: 1 },
+  // Right window
+  { type: "rect", x: 14, y: -22, w: 18, h: 14, color: "#80deea", radius: 1 },
+  { type: "line", x1: 23, y1: -22, x2: 23, y2: -8, color: "#4e342e", width: 1 },
+  // Door
+  { type: "rect", x: -9, y: 8, w: 18, h: 28, color: "#3e2723", radius: 1 },
+  { type: "circle", x: 6, y: 22, r: 2, color: "#ffd54f" },    // Door knob
+  // Roof
+  { type: "triangle", x1: -48, y1: -32, x2: 0, y2: -68, x3: 48, y3: -32, color: "#3e2723" },
+  { type: "triangle", x1: -44, y1: -32, x2: 0, y2: -63, x3: 44, y3: -32, color: "#4e342e" },
+  // Chimney
+  { type: "rect", x: 18, y: -82, w: 14, h: 26, color: "#616161", radius: 1 },
+  { type: "rect", x: 16, y: -86, w: 18, h: 5,  color: "#757575", radius: 1 },
+  // Smoke puffs
+  { type: "ellipse", x: 25, y: -96, rx: 9,  ry: 7, color: "rgba(200,200,200,0.40)" },
+  { type: "ellipse", x: 29, y: -110, rx: 7, ry: 6, color: "rgba(200,200,200,0.28)" },
+  { type: "ellipse", x: 24, y: -122, rx: 5, ry: 4, color: "rgba(200,200,200,0.18)" },
+  // Porch railing
+  { type: "line", x1: -45, y1: 28, x2: -45, y2: 44, color: "#5d4037", width: 2 },
+  { type: "line", x1:  45, y1: 28, x2:  45, y2: 44, color: "#5d4037", width: 2 },
+  { type: "line", x1: -45, y1: 38, x2:  45, y2: 38, color: "#5d4037", width: 2 },
+];
+
+const cabin: Entity = {
+  id: "cabin", x: 648, y: 938, layer: 3,
+  shapes: cabinShapes,
+  label: { text: "The Cabin", color: "#ffe0b2", font: "bold 13px sans-serif", offsetY: 64, shadow: { color: "rgba(0,0,0,0.8)", blur: 3 } },
+  solid: true,
+  hitbox:  { ox: -46, oy: -88, w: 92, h: 148 },
+  trigger: { type: "zone", name: "The Cabin", hitbox: { ox: -70, oy: -105, w: 140, h: 195 } },
+};
+
+// ── Mountain Coaster ───────────────────────────────────────────────────────
+// Winding silver track descending from the mountain peaks.
+// Entity positioned at centre of the track extent (1000, 600).
+// All shape coordinates are relative to that centre.
+//
+// Absolute path: (990,360)→(1110,455)→(920,555)→(1130,645)→(880,755)→(1005,835)
+// Relative (entity at 1000,600):
+//   (-10,-240) → (110,-145) → (-80,-45) → (130,45) → (-120,155) → (5,235)
+
+const coasterPath = [-10, -240, 110, -145, -80, -45, 130, 45, -120, 155, 5, 235];
+// Rail offsets: left rail -5px x, right rail +5px x per point
+const railL = coasterPath.map((v, i) => (i % 2 === 0 ? v - 5 : v));
+const railR = coasterPath.map((v, i) => (i % 2 === 0 ? v + 5 : v));
+
+const mountainCoaster: Entity = {
+  id: "mountain-coaster", x: 1000, y: 600, layer: 2,
+  shapes: [
+    // Track bed (wide, dark base)
+    { type: "polyline", points: coasterPath, color: "#455a64", width: 12, cap: "round", join: "round" },
+    // Left rail (silver)
+    { type: "polyline", points: railL, color: "#b0bec5", width: 3, cap: "round", join: "round" },
+    // Right rail (silver)
+    { type: "polyline", points: railR, color: "#b0bec5", width: 3, cap: "round", join: "round" },
+    // Support towers at each bend
+    { type: "line", x1: 110, y1: -145, x2: 110, y2: -240, color: "#78909c", width: 3 },
+    { type: "line", x1: -80, y1:  -45, x2: -80, y2: -145, color: "#78909c", width: 3 },
+    { type: "line", x1: 130, y1:   45, x2: 130, y2:  -45, color: "#78909c", width: 3 },
+    { type: "line", x1: -120, y1: 155, x2: -120, y2:  45, color: "#78909c", width: 3 },
+    // Top station (loading platform)
+    { type: "rect", x: -22, y: -250, w: 24, h: 16, color: "#546e7a", radius: 2 },
+    // Bottom station
+    { type: "rect", x: -8,  y:  232, w: 26, h: 16, color: "#546e7a", radius: 2 },
+  ],
+  label: { text: "Mountain Coaster", color: "#cfd8dc", font: "bold 12px sans-serif", offsetY: 254, shadow: { color: "rgba(0,0,0,0.8)", blur: 3 } },
+  trigger: { type: "zone", name: "Mountain Coaster", hitbox: { ox: -150, oy: -265, w: 300, h: 530 } },
+};
+
+// ── Concert Stadium ────────────────────────────────────────────────────────
+// Open-air amphitheatre with stage, lights, speaker towers and crowd pit.
+
+const concertStadium: Entity = {
+  id: "concert-stadium", x: CX, y: 1390, layer: 3,
+  shapes: [
+    // Outer structure shadow
+    { type: "rect", x: -148, y: -98, w: 296, h: 196, color: "rgba(0,0,0,0.25)", radius: 14 },
+    // Outer stadium walls
+    { type: "rect", x: -145, y: -95, w: 290, h: 190, color: "#37474f", radius: 14 },
+    // Seating bowl
+    { type: "ellipse", x: 0, y: 12, rx: 118, ry: 72, color: "#455a64" },
+    // Inner crowd pit / floor
+    { type: "ellipse", x: 0, y: 14, rx: 94, ry: 56, color: "#2e7d32" },
+    // Stage platform (back / north wall)
+    { type: "rect", x: -55, y: -60, w: 110, h: 34, color: "#0d0d1a", radius: 3 },
+    // Stage LED strip
+    { type: "rect", x: -55, y: -62, w: 110, h: 5,  color: "#ff6f00", radius: 2 },
+    // Stage lights
+    { type: "circle", x: -38, y: -56, r: 7, color: "#ffd600" },
+    { type: "circle", x:   0, y: -58, r: 9, color: "#fffde7" },
+    { type: "circle", x:  38, y: -56, r: 7, color: "#ffd600" },
+    // Speaker towers (left & right)
+    { type: "rect", x: -136, y: -52, w: 14, h: 34, color: "#1a1a1a", radius: 2 },
+    { type: "rect", x:  122, y: -52, w: 14, h: 34, color: "#1a1a1a", radius: 2 },
+    // Speaker grilles
+    { type: "rect", x: -134, y: -50, w: 10, h: 28, color: "#212121", radius: 1 },
+    { type: "rect", x:  124, y: -50, w: 10, h: 28, color: "#212121", radius: 1 },
+  ],
+  label: { text: "Concert Stadium", color: "#fff", font: "bold 14px sans-serif", offsetY: 110, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
+  solid: true,
+  hitbox:  { ox: -148, oy: -98, w: 296, h: 196 },
+  trigger: { type: "zone", name: "Concert Stadium", hitbox: { ox: -175, oy: -125, w: 350, h: 250 } },
+};
+
+// ── Return trigger ─────────────────────────────────────────────────────────
+
+const returnTrigger: Entity = {
+  id: "return", x: CX, y: CY + 640, layer: 5,
+  shapes: [
+    { type: "rect", x: -70, y: -18, w: 140, h: 36, color: "rgba(33,150,243,0.88)", radius: 8 },
+    { type: "text", x: 0, y: 0, text: "← Back to VT", color: "#fff",
+      font: "bold 12px sans-serif",
+      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+  ],
+  trigger: { type: "highway", name: "Return to VT", destination: "vt-island", hitbox: { ox: -90, oy: -45, w: 180, h: 90 } },
+};
+
+// ── Map export ────────────────────────────────────────────────────────────
 
 export const tennesseeMap: MapData = {
-  id: "tennessee", name: "Tennessee", worldWidth: W, worldHeight: W,
-  spawnX: CX, spawnY: CY + 200, spawnRotation: -Math.PI / 2,
-  bgColor: "#0e4a7a",
-  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 1000, ry: 900 },
+  id: "tennessee", name: "Tennessee",
+  worldWidth: W, worldHeight: W,
+  spawnX: CX, spawnY: CY + 180,
+  spawnRotation: -Math.PI / 2,
+  bgColor: "#1a3a5e",
+  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 820, ry: 780 },
   entities: [
-    { id: "ocean", x: 0, y: 0, layer: 0, shapes: [{ type: "rect", x: 0, y: 0, w: W, h: W, color: "#0e4a7a" }] },
-    { id: "island", x: 0, y: 0, layer: 0, shapes: [
-      { type: "ellipse", x: CX, y: CY, rx: 1010, ry: 910, color: "#e8d5a3" },
-      { type: "ellipse", x: CX, y: CY, rx: 1000, ry: 900, color: "#4caf50" },
-    ]},
-    { id: "mtn1", x: CX, y: CY - 350, layer: 1, shapes: [
-      { type: "triangle", x1: 0, y1: -220, x2: -160, y2: 80, x3: 160, y3: 80, color: "#6d7f88" },
-      { type: "triangle", x1: 0, y1: -220, x2: -45, y2: -140, x3: 45, y3: -140, color: "#eceff1" },
-    ]},
-    { id: "mtn2", x: CX - 250, y: CY - 250, layer: 1, shapes: [
-      { type: "triangle", x1: 0, y1: -160, x2: -120, y2: 60, x3: 120, y3: 60, color: "#8d9da6" },
-    ]},
-    { id: "cabin", x: CX - 100, y: CY + 100, layer: 3, shapes: [
-      { type: "rect", x: -30, y: -20, w: 60, h: 40, color: "#6d4c41", radius: 2 },
-      { type: "triangle", x1: -35, y1: -20, x2: 0, y2: -42, x3: 35, y3: -20, color: "#4e342e" },
-    ],
-    label: { text: "Mountain Cabin", color: "#fff", font: "bold 13px sans-serif", offsetY: 34, shadow: { color: "rgba(0,0,0,0.6)", blur: 3 } },
-    solid: true, hitbox: { ox: -36, oy: -44, w: 72, h: 66 },
-    trigger: { type: "zone", name: "Mountain Cabin", hitbox: { ox: -60, oy: -65, w: 120, h: 110 } },
-    },
-    { id: "return", x: CX, y: CY + 550, layer: 5, shapes: [
-      { type: "rect", x: -65, y: -18, w: 130, h: 36, color: "rgba(33,150,243,0.8)", radius: 8 },
-      { type: "text", x: 0, y: 0, text: "← Back to VT", color: "#fff", font: "bold 12px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
-    ],
-    trigger: { type: "highway", name: "Return to VT", destination: "vt-island", hitbox: { ox: -80, oy: -40, w: 160, h: 80 } },
-    },
+    ocean, island,
+    ...mountains,
+    ...roads,
+    cabin,
+    mountainCoaster,
+    concertStadium,
+    returnTrigger,
   ],
   items: [], npcs: [],
 };

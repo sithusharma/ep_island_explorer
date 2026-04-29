@@ -1,17 +1,39 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { useInput } from "@/app/hooks/useInput";
 import { useEngine } from "@/app/hooks/useEngine";
-import ZoneOverlay from "./ZoneOverlay";
-import AirportModal from "./AirportModal";
-import JukeboxOverlay from "./JukeboxOverlay";
+import TravelModal from "./TravelModal";
+import MemoryGallery from "./MemoryGallery";
+import { AIRPORT_DESTINATIONS } from "@/app/lib/maps/registry";
+
+// Icon map for known trigger types / names
+function triggerIcon(type: string, name: string): string {
+  if (type === "airport") return "✈";
+  if (type === "jukebox") return "♫";
+  if (name.toLowerCase().includes("stadium")) return "🏟";
+  if (name.toLowerCase().includes("pizza") || name.toLowerCase().includes("wings")) return "🍕";
+  if (name.toLowerCase().includes("bar") || name.toLowerCase().includes("house") || name.toLowerCase().includes("burg")) return "🍺";
+  if (name.toLowerCase().includes("weed") || name.toLowerCase().includes("wild")) return "🌿";
+  if (name.toLowerCase().includes("dorm")) return "🛏";
+  if (name.toLowerCase().includes("apt") || name.toLowerCase().includes("apartment") || name.toLowerCase().includes("hub")) return "🏠";
+  if (name.toLowerCase().includes("store")) return "🛒";
+  return "📍";
+}
+
+// Accent colour per trigger type
+function triggerAccent(type: string): string {
+  if (type === "airport" || type === "highway") return "border-amber-500/40 text-amber-400";
+  if (type === "jukebox") return "border-purple-500/40 text-purple-400";
+  return "border-white/20 text-white";
+}
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef({ w: 0, h: 0 });
   const keys = useInput();
-  const [showAirport, setShowAirport] = useState(false);
+  const [travelDestinations, setTravelDestinations] = useState<{id: string, label: string}[] | null>(null);
+  const [activeGallery, setActiveGallery] = useState<string | null>(null);
 
   // Sync canvas size
   const syncSize = useCallback(() => {
@@ -38,76 +60,78 @@ export default function GameCanvas() {
     [syncSize]
   );
 
-  // Engine
+  // Engine — highway auto-transitions are handled inside useEngine
   const { activeTrigger, startTransition } = useEngine(canvasRef, viewportRef, keys);
 
-  // Enter key handler
+  // Universal Enter handler
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter") return;
       if (!activeTrigger) return;
-
       if (activeTrigger.type === "airport") {
-        setShowAirport(true);
+        setTravelDestinations(AIRPORT_DESTINATIONS);
+        return;
       }
-      // Jukebox Enter — placeholder for future audio
-      // Zones — no action on Enter for now
+      setActiveGallery(activeTrigger.entityId);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [activeTrigger]);
 
-  const handleAirportSelect = useCallback(
-    (destId: string) => {
-      setShowAirport(false);
-      startTransition(destId);
-    },
-    [startTransition]
-  );
+  // Determine whether to show the prompt
+  const showPrompt = activeTrigger !== null;
+  const accent = activeTrigger ? triggerAccent(activeTrigger.type) : "";
+  const icon = activeTrigger ? triggerIcon(activeTrigger.type, activeTrigger.name) : "";
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
       <canvas ref={canvasCallbackRef} className="block" />
 
       {/* Controls hint */}
-      <div className="absolute left-4 bottom-4 rounded-xl bg-black/60 px-4 py-2 text-xs text-gray-500 backdrop-blur-sm z-10">
-        <span className="font-semibold text-gray-300">WASD</span> or{" "}
-        <span className="font-semibold text-gray-300">Arrow Keys</span> to drive
-      </div>
-
-      {/* Zone overlay */}
-      {activeTrigger?.type === "zone" && (
-        <ZoneOverlay name={activeTrigger.name} />
+      {!travelDestinations && !activeGallery && (
+        <div className="absolute left-4 bottom-4 rounded-xl bg-black/60 px-4 py-2 text-xs text-gray-500 backdrop-blur-sm z-10">
+          <span className="font-semibold text-gray-300">WASD</span> or{" "}
+          <span className="font-semibold text-gray-300">Arrow Keys</span> to drive
+        </div>
       )}
 
-      {/* Airport trigger hint */}
-      {activeTrigger?.type === "airport" && !showAirport && (
+      {/* Travel Modal */}
+      {travelDestinations && (
+        <TravelModal
+          destinations={travelDestinations}
+          onSelect={(destId) => { setTravelDestinations(null); startTransition(destId); }}
+          onClose={() => setTravelDestinations(null)}
+        />
+      )}
+
+      {/* Memory Gallery */}
+      {activeGallery && (
+        <MemoryGallery 
+          locationId={activeGallery} 
+          onClose={() => setActiveGallery(null)} 
+        />
+      )}
+
+      {/* Universal "Press Enter" prompt — shown for every trigger */}
+      {showPrompt && !travelDestinations && !activeGallery && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 z-20">
-          <div className="rounded-2xl border border-amber-500/30 bg-black/80 px-8 py-4 text-center shadow-2xl backdrop-blur-md max-w-md w-[92%]">
+          <div
+            className={`rounded-2xl border bg-black/85 px-8 py-4 text-center shadow-2xl backdrop-blur-md max-w-md w-[92%] transition-all duration-200 ${accent}`}
+          >
             <p className="text-lg font-bold text-white">
-              <span className="mr-1 text-amber-400">✈</span> Airport
+              <span className="mr-2">{icon}</span>
+              {activeTrigger!.name}
             </p>
             <p className="mt-1 text-sm text-gray-400">
               Press{" "}
               <kbd className="mx-0.5 rounded border border-gray-600 bg-gray-800 px-1.5 py-0.5 font-mono text-xs text-gray-200">
                 Enter
               </kbd>{" "}
-              to check flights
+              to explore
             </p>
           </div>
         </div>
       )}
-
-      {/* Airport modal */}
-      {showAirport && (
-        <AirportModal
-          onSelect={handleAirportSelect}
-          onClose={() => setShowAirport(false)}
-        />
-      )}
-
-      {/* Jukebox overlay */}
-      {activeTrigger?.type === "jukebox" && <JukeboxOverlay />}
     </div>
   );
 }

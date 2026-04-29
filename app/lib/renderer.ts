@@ -98,15 +98,25 @@ function drawShape(ctx: CanvasRenderingContext2D, s: Shape) {
       const p = s.points;
       if (!p || p.length < 4) break;
       ctx.strokeStyle = s.color ?? "#888";
-      ctx.lineWidth = s.width ?? 1;
-      ctx.lineCap = s.cap ?? "round";
-      ctx.lineJoin = s.join ?? "round";
+      ctx.lineWidth   = s.width ?? 1;
+      // Always force round so road segments truly merge at every junction —
+      // overriding per-shape values intentionally so the engine never
+      // produces miter spikes or flat endcap blobs where roads intersect.
+      ctx.lineCap  = "round";
+      ctx.lineJoin = "round";
+      // Optional canvas shadow (avoids doubling a separate shadow stripe
+      // entity at junctions, which is what causes the "stacked block" look).
+      if (s.shadow) {
+        ctx.shadowColor = s.shadow.color;
+        ctx.shadowBlur  = s.shadow.blur;
+      }
       if (s.dash) ctx.setLineDash(s.dash);
       ctx.beginPath();
       ctx.moveTo(p[0], p[1]);
       for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
       ctx.stroke();
-      if (s.dash) ctx.setLineDash([]);
+      if (s.dash)   ctx.setLineDash([]);
+      if (s.shadow) { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; }
       break;
     }
     case "polygon": {
@@ -197,75 +207,112 @@ function drawCar(ctx: CanvasRenderingContext2D, car: CarState) {
   ctx.restore();
 }
 
-// ── NPC renderer ──────────────────────────────────────────────────────────
+// ── NPC renderer — floating chibi cat face (no body) ─────────────────────
+//
+// Layout (all coords relative to npc centre after translate):
+//
+//            ╭──╮   ears   ╭──╮
+//           ▕  ██████████████  ▏  ← head circle r=18
+//            ▕   ◉       ◉   ▏   ← big eyes
+//             ▕   ╰ ♥ ╯     ▏    ← nose + tuxedo snout
+//              ╰────────────╯
+//
 
-function drawNpc(ctx: CanvasRenderingContext2D, npc: NpcState) {
+function drawNpc(ctx: CanvasRenderingContext2D, npc: any) {
   ctx.save();
   ctx.translate(npc.x, npc.y);
 
-  // Shadow
+  // ── Ground shadow ──────────────────────────────────────────────────────
   ctx.fillStyle = "rgba(0,0,0,0.12)";
   ctx.beginPath();
-  ctx.ellipse(1, 8, 10, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 20, 15, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Body
+  // ── Ears — drawn first so head circle covers the bases ────────────────
+  // Outer ears (same as bodyColor so they read as part of the head)
+  ctx.fillStyle = npc.bodyColor;
+  // Left outer
+  ctx.beginPath(); ctx.moveTo(-21, -11); ctx.lineTo(-15, -30); ctx.lineTo(-5, -14); ctx.closePath(); ctx.fill();
+  // Right outer
+  ctx.beginPath(); ctx.moveTo(21, -11); ctx.lineTo(15, -30); ctx.lineTo(5, -14); ctx.closePath(); ctx.fill();
+  // Inner ears (pink)
+  ctx.fillStyle = "#ffb6c1";
+  // Left inner
+  ctx.beginPath(); ctx.moveTo(-18, -13); ctx.lineTo(-14, -25); ctx.lineTo(-7, -15); ctx.closePath(); ctx.fill();
+  // Right inner
+  ctx.beginPath(); ctx.moveTo(18, -13); ctx.lineTo(14, -25); ctx.lineTo(7, -15); ctx.closePath(); ctx.fill();
+
+  // ── Head — big round dark circle ──────────────────────────────────────
   ctx.fillStyle = npc.bodyColor;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 10, 8, 0, 0, Math.PI * 2);
+  ctx.arc(0, 0, 18, 0, Math.PI * 2);
   ctx.fill();
 
-  // Chest
+  // ── Tuxedo snout — white rounded muzzle area ──────────────────────────
+  // Covers the lower face and gives the classic tuxedo look
   ctx.fillStyle = npc.accentColor;
   ctx.beginPath();
-  ctx.ellipse(2, 3, 5, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 9, 12, 10, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Ears
-  ctx.fillStyle = npc.bodyColor;
-  for (const dir of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(dir * 7, -6);
-    ctx.lineTo(dir * 10, -14);
-    ctx.lineTo(dir * 3, -8);
-    ctx.closePath();
-    ctx.fill();
-  }
-  // Inner ears
-  ctx.fillStyle = "#ffb6c1";
-  for (const dir of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(dir * 6, -7);
-    ctx.lineTo(dir * 8, -12);
-    ctx.lineTo(dir * 4, -8);
-    ctx.closePath();
-    ctx.fill();
-  }
+  // ── Eyes ──────────────────────────────────────────────────────────────
+  // White sclera
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath(); ctx.arc(-7, -4, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 7, -4, 6, 0, Math.PI * 2); ctx.fill();
+  // Warm amber iris
+  ctx.fillStyle = "#ffc400";
+  ctx.beginPath(); ctx.arc(-7, -3.5, 4.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 7, -3.5, 4.2, 0, Math.PI * 2); ctx.fill();
+  // Black pupil (slightly tall — cat-style)
+  ctx.fillStyle = "#111";
+  ctx.beginPath(); ctx.ellipse(-7, -3.5, 2, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( 7, -3.5, 2, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // Main shine (upper-left of each eye)
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath(); ctx.arc(-8.5, -6, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 5.5, -6, 1.5, 0, Math.PI * 2); ctx.fill();
+  // Secondary tiny shine
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.beginPath(); ctx.arc(-5.5, -2.5, 0.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(  8,  -2.5, 0.8, 0, Math.PI * 2); ctx.fill();
 
-  // Eyes
-  ctx.fillStyle = "#ffd600";
-  ctx.beginPath(); ctx.arc(-4, -2, 2.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(4, -2, 2.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#000";
-  ctx.beginPath(); ctx.arc(-4, -2, 1, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(4, -2, 1, 0, Math.PI * 2); ctx.fill();
+  // ── Nose — tiny pink heart-ish triangle ───────────────────────────────
+  ctx.fillStyle = "#ff8fa3";
+  ctx.beginPath();
+  ctx.moveTo(-2, 4); ctx.lineTo(2, 4); ctx.lineTo(0, 6.5);
+  ctx.closePath();
+  ctx.fill();
 
-  // Tail
-  ctx.strokeStyle = npc.bodyColor;
-  ctx.lineWidth = 3;
+  // ── Blush marks ───────────────────────────────────────────────────────
+  ctx.fillStyle = "rgba(255,140,140,0.28)";
+  ctx.beginPath(); ctx.ellipse(-13,  1, 4.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( 13,  1, 4.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ── Whiskers — emanate from the snout ─────────────────────────────────
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 0.9;
   ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(-8, 4);
-  ctx.quadraticCurveTo(-18, -2, -14, -10);
+  // Left side (3 whiskers)
+  ctx.moveTo(-4, 7);  ctx.lineTo(-18,  4);
+  ctx.moveTo(-4, 9);  ctx.lineTo(-18,  9);
+  ctx.moveTo(-4, 11); ctx.lineTo(-17, 13);
+  // Right side
+  ctx.moveTo(4, 7);   ctx.lineTo(18,  4);
+  ctx.moveTo(4, 9);   ctx.lineTo(18,  9);
+  ctx.moveTo(4, 11);  ctx.lineTo(17, 13);
   ctx.stroke();
 
-  // Name
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 10px sans-serif";
-  ctx.textAlign = "center";
-  ctx.shadowColor = "rgba(0,0,0,0.5)";
-  ctx.shadowBlur = 2;
-  ctx.fillText(npc.name, 0, -20);
+  // ── Name tag — above the ear tips ─────────────────────────────────────
+  ctx.shadowColor = "rgba(0,0,0,0.70)";
+  ctx.shadowBlur  = 3;
+  ctx.fillStyle   = "#ffffff";
+  ctx.font        = "bold 10px sans-serif";
+  ctx.textAlign   = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(npc.name, 0, -32);
+  ctx.shadowBlur = 0;
 
   ctx.restore();
 }
@@ -404,8 +451,9 @@ export function renderFrame(
   // Camera centred on car
   ctx.translate(-(car.x - vw / 2), -(car.y - vh / 2));
 
-  // Draw all entities sorted by layer
-  for (const e of map.entities) drawEntity(ctx, e);
+  // Draw all entities in strict layer order
+  const layered = [...map.entities].sort((a, b) => a.layer - b.layer);
+  for (const e of layered) drawEntity(ctx, e);
 
   // NPCs
   for (const npc of npcs) drawNpc(ctx, npc);

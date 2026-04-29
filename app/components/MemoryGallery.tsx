@@ -1,0 +1,110 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/app/utils/supabase";
+
+interface Props {
+  locationId: string;
+  onClose: () => void;
+}
+
+export default function MemoryGallery({ locationId, onClose }: Props) {
+  const [urls, setUrls] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Listen for Escape key
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    // Fetch images
+    const fetchImages = async () => {
+      try {
+        setLoading(true);
+        // Hardcoded to look at the 'test' folder for now
+        const { data, error } = await supabase.storage.from("EP_Photos").list("test");
+        
+        if (error) {
+          console.error("Error fetching from Supabase:", error);
+          return;
+        }
+
+        if (data) {
+          // Filter for .jpg or .jpeg (case insensitive)
+          const validFiles = data.filter((file) => {
+            const name = file.name.toLowerCase();
+            return name.endsWith(".jpg") || name.endsWith(".jpeg");
+          });
+
+          // Get public URLs
+          const mappedUrls = validFiles.map((file) => {
+            const { data: publicUrlData } = supabase.storage
+              .from("EP_Photos")
+              .getPublicUrl(`test/${file.name}`);
+            return publicUrlData.publicUrl;
+          });
+
+          setUrls(mappedUrls);
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchImages();
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]); // locationId is passed but we only fetch 'test' as requested
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md overflow-y-auto">
+      {/* Header */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-6 bg-gradient-to-b from-black/80 to-transparent">
+        <h1 className="text-3xl font-bold text-white capitalize tracking-wide">
+          {locationId.replace(/-/g, " ")}
+        </h1>
+        <button
+          onClick={onClose}
+          className="rounded-xl border border-white/20 bg-white/10 px-6 py-2 text-sm font-medium text-white transition-all hover:bg-white/20 hover:scale-105 active:scale-95"
+        >
+          ESC to Close
+        </button>
+      </div>
+
+      {/* Grid */}
+      <div className="flex-1 px-8 pb-12">
+        {loading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"></div>
+          </div>
+        ) : urls.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {urls.map((url, i) => (
+              <div 
+                key={i} 
+                className="group relative aspect-video overflow-hidden rounded-2xl bg-white/5 border border-white/10"
+              >
+                {/* Standard HTML img to avoid next/image domain config errors during testing */}
+                <img
+                  src={url}
+                  alt={`Memory ${i}`}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/20" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex h-64 items-center justify-center text-white/50">
+            <p>No photos found in the test folder.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
