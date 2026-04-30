@@ -10,13 +10,6 @@ const CY = W / 2;   // 1000
 
 // ── Utilities ─────────────────────────────────────────────────────────────
 
-function dk(hex: string, n = 30): string {
-  const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - n);
-  const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - n);
-  const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - n);
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-}
-
 /** Winding scenic road */
 function road(id: string, pts: number[]): Entity {
   return {
@@ -94,6 +87,7 @@ const roads: Entity[] = [
   road("main-ns",   [CX,  240, CX, 1760]),      // N–S spine
   road("main-ew",   [240, CY, 1760,  CY]),      // E–W cross
   road("scenic-w",  [700, CY, 460, 1100, 380, 1360]), // Scenic western loop
+  road("concert-east", [1290, CY, 1515, 1018, 1710, 1030]), // Eastern concert spur
 ];
 
 // ── Cabin ─────────────────────────────────────────────────────────────────
@@ -179,11 +173,52 @@ const mountainCoaster: Entity = {
   trigger: { type: "zone", name: "Mountain Coaster", hitbox: { ox: -150, oy: -265, w: 300, h: 530 } },
 };
 
+// ── Dollywood ─────────────────────────────────────────────────────────────
+// Bright theme-park cluster with rides, booths, coaster loop, and midway.
+
+const dollywood: Entity = {
+  id: "dollywood", x: 1328, y: 1230, layer: 3,
+  shapes: [
+    // Midway paving
+    { type: "ellipse", x: 0, y: 16, rx: 150, ry: 100, color: "rgba(255,224,130,0.42)" },
+    { type: "ellipse", x: 4, y: 20, rx: 128, ry: 78, color: "rgba(255,245,157,0.35)" },
+    // Colorful ticket gate
+    { type: "rect", x: -72, y: 45, w: 144, h: 34, color: "#7b1fa2", radius: 4 },
+    { type: "rect", x: -62, y: 30, w: 124, h: 20, color: "#fdd835", radius: 3 },
+    { type: "text", x: 0, y: 40, text: "DOLLYWOOD", color: "#4a148c",
+      font: "bold 11px sans-serif",
+      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    // Ferris wheel
+    { type: "circle", x: -82, y: -34, r: 42, color: "rgba(255,255,255,0.12)", stroke: "#ef5350", lineWidth: 5 },
+    { type: "line", x1: -82, y1: -76, x2: -82, y2: 8, color: "#ffeb3b", width: 3 },
+    { type: "line", x1: -124, y1: -34, x2: -40, y2: -34, color: "#29b6f6", width: 3 },
+    { type: "line", x1: -112, y1: -64, x2: -52, y2: -4, color: "#ab47bc", width: 3 },
+    { type: "line", x1: -52, y1: -64, x2: -112, y2: -4, color: "#66bb6a", width: 3 },
+    { type: "circle", x: -82, y: -34, r: 8, color: "#fff176" },
+    // Roller coaster squiggle
+    { type: "polyline", points: [4, -70, 32, -100, 64, -50, 96, -86, 130, -36], color: "#1565c0", width: 12, cap: "round", join: "round" },
+    { type: "polyline", points: [4, -70, 32, -100, 64, -50, 96, -86, 130, -36], color: "#90caf9", width: 4, cap: "round", join: "round" },
+    { type: "line", x1: 32, y1: -100, x2: 32, y2: -30, color: "#6d4c41", width: 3 },
+    { type: "line", x1: 96, y1: -86, x2: 96, y2: -22, color: "#6d4c41", width: 3 },
+    // Small ride tents and food booths
+    { type: "triangle", x1: 36, y1: 8, x2: 68, y2: -32, x3: 100, y3: 8, color: "#ff7043" },
+    { type: "rect", x: 42, y: 8, w: 52, h: 42, color: "#ffcc80", radius: 2 },
+    { type: "triangle", x1: -28, y1: 8, x2: 0, y2: -28, x3: 28, y3: 8, color: "#26c6da" },
+    { type: "rect", x: -24, y: 8, w: 48, h: 38, color: "#80deea", radius: 2 },
+    { type: "circle", x: 112, y: 28, r: 22, color: "#ec407a" },
+    { type: "circle", x: 112, y: 28, r: 11, color: "#fff176" },
+  ],
+  label: { text: "Dollywood", color: "#fff176", font: "bold 14px sans-serif", offsetY: 116, shadow: { color: "rgba(0,0,0,0.9)", blur: 4 } },
+  solid: true,
+  hitbox: { ox: -128, oy: -106, w: 272, h: 196 },
+  trigger: { type: "zone", name: "Dollywood", hitbox: { ox: -170, oy: -128, w: 340, h: 256 } },
+};
+
 // ── Concert Stadium ────────────────────────────────────────────────────────
 // Open-air amphitheatre with stage, lights, speaker towers and crowd pit.
 
 const concertStadium: Entity = {
-  id: "concert-stadium", x: CX, y: 1390, layer: 3,
+  id: "concert-stadium", x: 1720, y: 1030, layer: 3,
   shapes: [
     // Outer structure shadow
     { type: "rect", x: -148, y: -98, w: 296, h: 196, color: "rgba(0,0,0,0.25)", radius: 14 },
@@ -242,6 +277,7 @@ export const tennesseeMap: MapData = {
     ...roads,
     cabin,
     mountainCoaster,
+    dollywood,
     concertStadium,
     returnTrigger,
   ],

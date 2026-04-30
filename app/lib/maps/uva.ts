@@ -57,6 +57,50 @@ function pavilion(id: string, x: number, y: number, facing: "left" | "right"): E
   };
 }
 
+/** Non-clickable apartment block with balconies */
+function apartment(id: string, x: number, y: number, w: number, h: number, color: string, label?: string): Entity {
+  const shapes: Shape[] = [
+    { type: "rect", x: -(w / 2) + 4, y: -(h / 2) + 5, w, h, color: "rgba(0,0,0,0.24)", radius: 3 },
+    { type: "rect", x: -(w / 2), y: -(h / 2), w, h, color, radius: 3 },
+    { type: "rect", x: -(w / 2) - 2, y: -(h / 2) - 7, w: w + 4, h: 8, color: dk(color, 34), radius: 2 },
+    { type: "rect", x: -8, y: h / 2 - 18, w: 16, h: 18, color: dk(color, 58), radius: 1 },
+  ];
+  const cols = Math.max(1, Math.floor((w - 16) / 20));
+  const rows = Math.max(1, Math.floor((h - 34) / 22));
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const wx = -(w / 2) + 10 + c * 20;
+      const wy = -(h / 2) + 12 + r * 22;
+      shapes.push({ type: "rect", x: wx, y: wy, w: 11, h: 11, color: "rgba(210,235,255,0.42)", radius: 1 });
+      shapes.push({ type: "rect", x: wx - 2, y: wy + 12, w: 15, h: 3, color: "rgba(255,255,255,0.42)", radius: 1 });
+    }
+  }
+
+  return {
+    id, x, y, layer: 3, shapes,
+    label: label ? { text: label, color: "#fff", font: "bold 11px sans-serif", offsetY: h / 2 + 14, shadow: { color: "rgba(0,0,0,0.8)", blur: 3 } } : undefined,
+    solid: true,
+    hitbox: { ox: -(w / 2) - 3, oy: -(h / 2) - 8, w: w + 6, h: h + 14 },
+  };
+}
+
+/** Non-clickable storefront for the downtown food/nightlife street */
+function storefront(id: string, x: number, y: number, w: number, color: string, text: string): Entity {
+  return {
+    id, x, y, layer: 3,
+    shapes: [
+      { type: "rect", x: -(w / 2) + 3, y: -29, w, h: 58, color: "rgba(0,0,0,0.22)", radius: 2 },
+      { type: "rect", x: -(w / 2), y: -32, w, h: 58, color, radius: 2 },
+      { type: "rect", x: -(w / 2) - 2, y: -38, w: w + 4, h: 8, color: dk(color, 38), radius: 1 },
+      { type: "rect", x: -(w / 2) + 8, y: -18, w: w - 16, h: 17, color: "rgba(255,255,255,0.18)", radius: 2 },
+      { type: "rect", x: -8, y: 7, w: 16, h: 19, color: "rgba(0,0,0,0.38)", radius: 1 },
+      { type: "text", x: 0, y: -9, text, color: "#fff", font: "bold 8px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    ],
+    solid: true,
+    hitbox: { ox: -(w / 2) - 3, oy: -40, w: w + 6, h: 68 },
+  };
+}
+
 // ── Base terrain ──────────────────────────────────────────────────────────
 
 const ocean: Entity = {
@@ -80,7 +124,23 @@ const roads: Entity[] = [
   road("main-ew",  [320, CY, 1480, CY]),     // Rugby Road (E–W)
   road("lawn-w",   [855, 520, 855, 900]),    // West Range path
   road("lawn-e",   [945, 520, 945, 900]),    // East Range path
+  road("downtown-st", [1145, 655, 1435, 655]), // Downtown food + nightlife
+  road("apartment-loop", [412, 670, 520, 584, 650, 622, 706, 756]), // Apartment loop
 ];
+
+// ── Carter Mountain ───────────────────────────────────────────────────────
+
+const carterMountain: Entity = {
+  id: "carter-mountain", x: 1290, y: 1248, layer: 1,
+  shapes: [
+    { type: "ellipse", x: 0, y: 18, rx: 238, ry: 152, color: "#2f6d3f" },
+    { type: "ellipse", x: -36, y: -8, rx: 190, ry: 118, color: "#3d7d46" },
+    { type: "ellipse", x: 54, y: -34, rx: 124, ry: 76, color: "#568d4a" },
+    { type: "polyline", points: [-168, 28, -82, -46, 0, 18, 78, -72, 174, -18], color: "rgba(255,255,255,0.18)", width: 5, cap: "round", join: "round" },
+    { type: "polyline", points: [-142, 74, -38, 34, 42, 66, 138, 18], color: "rgba(71,45,23,0.25)", width: 7, cap: "round", join: "round" },
+  ],
+  label: { text: "Carter Mountain", color: "#e8f5e9", font: "bold 13px sans-serif", offsetY: 156, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
+};
 
 // ── The Rotunda ───────────────────────────────────────────────────────────
 // Iconic domed centrepiece of UVA's Academic Village — Jefferson's masterwork
@@ -151,6 +211,30 @@ const pavilions: Entity[] = [
   pavilion("pav-e3", 992, 818, "left"),
 ];
 
+// ── Apartments ────────────────────────────────────────────────────────────
+
+const apartments: Entity[] = [
+  apartment("apartment-west-1", 455, 650, 76, 88, "#8a5a44", "Apartments"),
+  apartment("apartment-west-2", 552, 594, 70, 78, "#a4663d"),
+  apartment("apartment-west-3", 634, 684, 82, 94, "#6f5b4b"),
+  apartment("apartment-south-1", 572, 1198, 84, 88, "#8d6e63"),
+  apartment("apartment-south-2", 674, 1208, 74, 80, "#795548"),
+];
+
+// ── Downtown Street ───────────────────────────────────────────────────────
+
+const downtownStreet: Entity[] = [
+  { id: "downtown-label", x: 1290, y: 596, layer: 4, shapes: [
+    { type: "text", x: 0, y: 0, text: "Downtown", color: "#fff", font: "bold 13px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
+  ]},
+  storefront("corner-bites", 1168, 618, 70, "#b95532", "FOOD"),
+  storefront("late-night", 1252, 612, 76, "#463366", "MUSIC"),
+  storefront("pizza-row", 1340, 618, 72, "#ba6b2c", "PIZZA"),
+  storefront("pub-lights", 1422, 614, 66, "#2f5e49", "PUB"),
+  storefront("brunch-house", 1214, 704, 82, "#c48a4a", "CAFE"),
+  storefront("dance-cellar", 1322, 710, 92, "#2f2c4d", "DANCE"),
+];
+
 // ── Alderman Library ──────────────────────────────────────────────────────
 
 const aldermanLibrary: Entity = {
@@ -218,10 +302,13 @@ export const uvaMap: MapData = {
   boundary: { type: "ellipse", cx: CX, cy: CY, rx: 680, ry: 640 },
   entities: [
     ocean, island,
+    carterMountain,
     ...roads,
     theLawn,
     rotunda,
     ...pavilions,
+    ...apartments,
+    ...downtownStreet,
     aldermanLibrary,
     jpjArena,
     returnTrigger,

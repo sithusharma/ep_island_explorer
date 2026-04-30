@@ -10,6 +10,7 @@ const CX  = 1800;
 const CY  = 1800;
 const IRX = 1600; // Island ellipse X radius (sand)
 const IRY = 1500; // Island ellipse Y radius (sand)
+const SHOW_FRIEND_GARAGES = true;
 
 // ── Utilities ─────────────────────────────────────────────────────────────
 
@@ -18,6 +19,15 @@ function darker(hex: string, n = 30): string {
   const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - n);
   const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - n);
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+function highwayTheme(dest: string, label: string) {
+  const key = `${dest} ${label}`.toLowerCase();
+  if (key.includes("vt")) return { icon: "🏰", face: "#7c3aed", accent: "#c4b5fd", glow: "rgba(196,181,253,0.34)" };
+  if (key.includes("nyc")) return { icon: "🗽", face: "#0f766e", accent: "#99f6e4", glow: "rgba(153,246,228,0.3)" };
+  if (key.includes("miami") || key.includes("cancun")) return { icon: "🌴", face: "#0f766e", accent: "#86efac", glow: "rgba(134,239,172,0.28)" };
+  if (key.includes("dc")) return { icon: "🏛️", face: "#1d4ed8", accent: "#bfdbfe", glow: "rgba(191,219,254,0.34)" };
+  return { icon: "🛣️", face: "#1e3a8a", accent: "#93c5fd", glow: "rgba(147,197,253,0.32)" };
 }
 
 // ── Entity factories ───────────────────────────────────────────────────────
@@ -75,18 +85,66 @@ function road(id: string, pts: number[]): Entity {
 
 /** Highway sign trigger at island edge */
 function hwy(id: string, x: number, y: number, dest: string, label: string): Entity {
+  const theme = highwayTheme(dest, label);
   return {
     id, x, y, layer: 5,
     shapes: [
-      { type: "rect", x: -44, y: -16, w: 88, h: 28, color: "rgba(33,150,243,0.88)", radius: 6 },
+      { type: "rect", x: -4, y: -10, w: 8, h: 50, color: "#4b5563", radius: 4 },
+      { type: "rect", x: -52, y: -34, w: 104, h: 42, color: "rgba(15,23,42,0.28)", radius: 12 },
+      { type: "rect", x: -48, y: -38, w: 96, h: 38, color: theme.face, radius: 12, stroke: theme.accent, lineWidth: 2 },
+      { type: "circle", x: -26, y: -19, r: 11, color: "rgba(255,255,255,0.12)" },
       {
-        type: "text", x: 0, y: 0, text: `→ ${label}`, color: "#fff",
+        type: "text", x: -26, y: -19, text: theme.icon, color: "#fff",
+        font: "16px sans-serif",
+        align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+        shadow: { color: theme.glow, blur: 8 },
+      },
+      {
+        type: "text", x: 8, y: -19, text: label.toUpperCase(), color: "#fff",
         font: "bold 11px sans-serif",
+        align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+        shadow: { color: theme.glow, blur: 6 },
+      },
+      { type: "line", x1: 10, y1: -6, x2: 28, y2: -6, color: theme.accent, width: 2 },
+      { type: "line", x1: 28, y1: -6, x2: 22, y2: -10, color: theme.accent, width: 2 },
+      { type: "line", x1: 28, y1: -6, x2: 22, y2: -2, color: theme.accent, width: 2 },
+    ],
+    trigger: { type: "highway", name: label, destination: dest, hitbox: { ox: -72, oy: -56, w: 144, h: 120 } },
+  };
+}
+
+function garageEntities(id: string, x: number, y: number, name: string, color: string): Entity[] {
+  return [{
+    id: `${id}-spot`,
+    x,
+    y,
+    layer: 3,
+    shapes: [
+      { type: "rect", x: -34, y: -38, w: 68, h: 80, color: "rgba(0,0,0,0.10)", radius: 7 },
+      { type: "rect", x: -32, y: -36, w: 64, h: 76, color: "#6f9f61", radius: 7 },
+      { type: "rect", x: -28, y: -32, w: 56, h: 68, color: "#d7dde3", radius: 4, stroke: "#f8fafc", lineWidth: 2 },
+      { type: "rect", x: -24, y: -28, w: 48, h: 8, color: color, radius: 2 },
+      { type: "line", x1: -28, y1: -24, x2: -28, y2: 30, color: "#fff8e1", width: 3 },
+      { type: "line", x1: 28, y1: -24, x2: 28, y2: 30, color: "#fff8e1", width: 3 },
+      { type: "line", x1: -18, y1: -16, x2: 18, y2: -16, color: "rgba(255,255,255,0.85)", width: 2 },
+      { type: "line", x1: -18, y1: 20, x2: 18, y2: 20, color: "rgba(255,255,255,0.28)", width: 1.5 },
+      {
+        type: "text", x: 0, y: 4, text: name.slice(0, 3), color: "#0f172a",
+        font: "bold 9px sans-serif",
         align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
       },
     ],
-    trigger: { type: "highway", name: label, destination: dest, hitbox: { ox: -65, oy: -50, w: 130, h: 100 } },
-  };
+    label: {
+      text: `${name}'s Parking Spot`, color: "#fff", font: "bold 11px sans-serif",
+      offsetY: 48, shadow: { color: "rgba(0,0,0,0.9)", blur: 4 },
+    },
+    solid: false,
+    trigger: {
+      type: "zone",
+      name: `${name}'s Parking Spot`,
+      hitbox: { ox: -32, oy: -36, w: 64, h: 76 },
+    },
+  }];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -101,9 +159,9 @@ const ocean: Entity = {
 const island: Entity = {
   id: "island", x: 0, y: 0, layer: 0,
   shapes: [
-    { type: "ellipse", x: CX, y: CY, rx: IRX,        ry: IRY,        color: "#e8d5a3" }, // Sandy shore
-    { type: "ellipse", x: CX, y: CY, rx: IRX - 40,   ry: IRY - 40,   color: "#4caf50" }, // Grass
-    { type: "ellipse", x: CX - 80, y: CY - 80, rx: IRX - 200, ry: IRY - 200, color: "#5cb860", alpha: 0.45 }, // Inner tint
+    { type: "ellipse", x: CX, y: CY, rx: IRX,        ry: IRY,        color: "#e8d5a3" }, 
+    { type: "ellipse", x: CX, y: CY, rx: IRX - 40,   ry: IRY - 40,   color: "#4caf50" }, 
+    { type: "ellipse", x: CX - 52, y: CY - 48, rx: IRX - 260, ry: IRY - 240, color: "#5cb860", alpha: 0.42 }, 
   ],
 };
 
@@ -122,58 +180,195 @@ const drillfield: Entity = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// NW QUADRANT — The Spot & ABC Store
-// Off rd-nw diagonal (1400,1400)→(1000,1000); buildings set back ≥ 80 px
+// NW QUADRANT — Hikes, The Spot & ABC Store
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Outdoor hangout spot on a hill — NW of campus
 const theSpot: Entity = {
-  id: "the-spot", x: 1050, y: 850, layer: 1,
+  id: "the-spot", x: 760, y: 1000, layer: 1,
   shapes: [
-    { type: "circle",  x: -120, y: -100, r: 40,        color: "#ffee58" },           // Sun
-    { type: "ellipse", x: 0,    y: 0,    rx: 220, ry: 150, color: "#81c784" },       // Hill
-    { type: "rect",    x: -25,  y: -20,  w: 50, h: 10, color: "#8d6e63", radius: 2 }, // Bench back
-    { type: "rect",    x: -25,  y: -10,  w: 50, h: 8,  color: "#5d4037", radius: 2 }, // Bench seat
+    { type: "circle",  x: -96, y: -76, r: 34,         color: "#ffee58" },
+    { type: "ellipse", x: 0,   y: 0,   rx: 190, ry: 126, color: "#81c784" },
+    { type: "rect",    x: -25,  y: -20,  w: 50, h: 10, color: "#8d6e63", radius: 2 },
+    { type: "rect",    x: -25,  y: -10,  w: 50, h: 8,  color: "#5d4037", radius: 2 },
   ],
-  label: { text: "The Spot", color: "#fff", font: "bold 16px sans-serif", offsetY: 120, shadow: { color: "#000", blur: 4 } },
+  label: { text: "The Spot", color: "#fff", font: "bold 16px sans-serif", offsetY: 102, shadow: { color: "#000", blur: 4 } },
   solid: false,
-  trigger: { type: "zone", name: "The Spot", hitbox: { ox: -200, oy: -155, w: 400, h: 310 } },
+  trigger: { type: "zone", name: "The Spot", hitbox: { ox: -180, oy: -136, w: 360, h: 272 } },
 };
 
-// ABC Store — shifted west to clear the road and provide a yard
-const abcStore = bldg("abc-store", 950, 1150, 90, 60, "#6a1b9a", "ABC Store");
+const cascades: Entity = {
+  id: "cascades", x: 880, y: 1290, layer: 1,
+  shapes: [
+    { type: "ellipse",  x: 0,   y: 10,  rx: 152, ry: 90, color: "#4a7c4e" },
+    { type: "triangle", x1: -90, y1: 25, x2: -25, y2: -55, x3: 50, y3: 25, color: "#5a9060" },
+    { type: "triangle", x1: -30, y1: 25, x2:  30, y2: -80, x3: 100, y3: 25, color: "#4e8455" },
+    { type: "triangle", x1: -12, y1: -35, x2: -25, y2: -55, x3: 5,  y3: -34, color: "#ecf0f1" },
+    { type: "triangle", x1:  18, y1: -56, x2:  30, y2: -80, x3: 52, y3: -52, color: "#ecf0f1" },
+    { type: "rect",     x:  14,  y: -54,  w: 9, h: 68, color: "#64b5f6", radius: 4 },
+    { type: "rect",     x:  16,  y: -56,  w: 4, h: 40, color: "#bbdefb", radius: 2, alpha: 0.75 },
+    { type: "ellipse",  x:  18,  y: 20,   rx: 22, ry: 9,  color: "rgba(100,181,246,0.38)" },
+  ],
+  label: { text: "Cascades", color: "#fff", font: "bold 14px sans-serif", offsetY: 88, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
+  solid: false,
+  trigger: { type: "zone", name: "Cascades", hitbox: { ox: -160, oy: -110, w: 320, h: 220 } },
+};
+
+const dragonsTooth: Entity = {
+  id: "dragons-tooth", x: 1120, y: 690, layer: 1,
+  shapes: [
+    { type: "ellipse",  x: 0,    y: 10,  rx: 138, ry: 82, color: "#6d6d6d" },
+    { type: "triangle", x1: -95, y1: 30, x2: -15, y2: -40, x3: 60, y3: 30,  color: "#8a8a8a" },
+    { type: "triangle", x1: -20, y1: 30, x2: 50,  y2: -35, x3: 100, y3: 30, color: "#757575" },
+    { type: "triangle", x1: -18, y1: -25, x2: 5,  y2: -105, x3: 28, y3: -25, color: "#bdbdbd" },
+    { type: "triangle", x1:   5, y1: -105, x2: 28, y2: -25, x3: 22, y3: -28, color: "#9e9e9e" },
+    { type: "triangle", x1: -70, y1: 30,  x2: -45, y2: -5,  x3: -18, y3: 30, color: "#616161" },
+  ],
+  label: { text: "Dragon's Tooth", color: "#fff", font: "bold 14px sans-serif", offsetY: 80, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
+  solid: false,
+  trigger: { type: "zone", name: "Dragon's Tooth", hitbox: { ox: -128, oy: -118, w: 256, h: 230 } },
+};
+
+const abcStore = bldg("abc-store", 1200, 1450, 90, 60, "#6a1b9a", "ABC Store");
+
+const graveyard: Entity = {
+  id: "graveyard", x: 1450, y: 1100, layer: 2,
+  shapes: [
+    { type: "ellipse", x: 0, y: 0, rx: 72, ry: 52, color: "#2e7d32" },
+    { type: "ellipse", x: 0, y: 0, rx: 62, ry: 43, color: "#388e3c" },
+    { type: "rect", x: -72, y: -52, w: 144, h: 4,   color: "#5d4037" },
+    { type: "rect", x: -72, y:  48, w: 144, h: 4,   color: "#5d4037" },
+    { type: "rect", x: -72, y: -52, w:   4, h: 104, color: "#5d4037" },
+    { type: "rect", x:  68, y: -52, w:   4, h: 104, color: "#5d4037" },
+    { type: "rect", x: -44, y: -22, w: 22, h: 32, color: "#9e9e9e", radius: 5 },
+    { type: "rect", x: -10, y: -26, w: 20, h: 32, color: "#bdbdbd", radius: 5 },
+    { type: "rect", x:  22, y: -22, w: 22, h: 32, color: "#9e9e9e", radius: 5 },
+  ],
+  label: { text: "Graveyard", color: "#90a4ae", font: "bold 13px sans-serif", offsetY: 62, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
+  solid: false,
+  trigger: { type: "graveyard", name: "Graveyard", hitbox: { ox: -80, oy: -62, w: 160, h: 124 } },
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NE QUADRANT — Apartments
-// rd-ne1 (2200,1400)→(2300,1000), rd-ne2 (2300,1000)→(2900,1000)
-// All buildings ≥ 110 px from nearest road edge
 // ═══════════════════════════════════════════════════════════════════════════
 
-const theHub    = bldg("the-hub",        2400, 750,  140, 90,  "#78909c", "The Hub");
-const collegiate= bldg("collegiate-apt", 2600, 800,  140, 90,  "#b8956a", "Collegiate Apartment");
-const edges     = bldg("edges-apt",      2450, 1250, 120, 80,  "#c8a882", "Edge's Apartment");
+const edges      = bldg("edges-apt",      2450, 1150, 120, 80,  "#c8a882", "Edge's Apartment");
+const alight     = bldg("alight",         2450, 750,  148, 92,  "#a1887f", "Alight");
+const theHub     = bldg("the-hub",        2230, 760,  140, 90,  "#78909c", "The Hub");
+const collegiate = bldg("collegiate-apt", 2700, 790,  140, 90,  "#b8956a", "Collegiate Apartment");
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SW QUADRANT — Downtown bars & Jukebox
-// rd-sw: (1400,2200)→(1200,2450)→(1200,2800)
-// Row 1 (y≈2380): flanking the diagonal segment
-// Row 2 (y≈2640): flanking the vertical x=1200 segment
-// Buildings set ≥ 80 px from road edges (road half-width = 21 px)
+// MIDDLE WEST — Frat Row
 // ═══════════════════════════════════════════════════════════════════════════
 
-// — Row 1: west of diagonal (x<1170) or east (x>1310) —
-const tots      = bldg("tots",        900, 2350,  85, 60, "#37474f", "TOTS");
-const hokieHouse= bldg("hokie-house", 1000, 2300,  90, 65, "#861F41", "Hokie House");
-const bennys    = bldg("bennys",     1450, 2350,  85, 60, "#c62828", "Benny's Pizza");
+const fratRowShapes: Shape[] = [];
+const fratHouses: Array<{ dx: number; color: string; name: string }> = [
+  { dx: -145, color: "#7b1fa2", name: "ΦΔΘ" },
+  { dx:  -45, color: "#1565c0", name: "ΣΧ"  },
+  { dx:   55, color: "#2e7d32", name: "ΔΚΕ" },
+  { dx:  155, color: "#e65100", name: "ΑΤΩ" },
+];
+for (const { dx, color, name } of fratHouses) {
+  const roof = darker(color, 35);
+  const door = darker(color, 60);
+  fratRowShapes.push(
+    { type: "rect", x: dx - 33, y: -20, w: 66, h: 52, color: "rgba(0,0,0,0.18)", radius: 2 },
+    { type: "rect", x: dx - 32, y: -24, w: 64, h: 52, color, radius: 2 },
+    { type: "rect", x: dx - 35, y: -31, w: 70, h: 9,  color: roof, radius: 1 },
+    { type: "rect", x: dx - 8,  y:  14, w: 16, h: 14, color: door },
+    { type: "text", x: dx, y: 38, text: name, color: "#fff",
+      font: "bold 10px sans-serif",
+      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+  );
+}
 
-// — Row 2: flanking the x=1200 vertical leg —
-const theBurg   = bldg("the-burg",    950, 2630,  90, 60, "#795548", "The Burg");
-const wildSide  = bldg("wild-side",   900, 2730,  95, 65, "#2e7d32", "Wild Side");
-const bww       = bldg("bww",        1450, 2650, 105, 70, "#f9a825", "Buffalo Wild Wings");
+const fratRow: Entity = {
+  id: "frat-row", x: 900, y: 1650, layer: 3,
+  shapes: fratRowShapes,
+  label: { text: "Frat Row", color: "#fff", font: "bold 14px sans-serif", offsetY: 60, shadow: { color: "rgba(0,0,0,0.9)", blur: 4 } },
+  solid: true,
+  hitbox:  { ox: -178, oy: -38, w: 356, h: 100 },
+  trigger: { type: "zone", name: "Frat Row", hitbox: { ox: -200, oy: -60, w: 400, h: 150 } },
+};
 
-// Jukebox — west of x=1200 road leg, between the two bar rows
+// ═══════════════════════════════════════════════════════════════════════════
+// SOUTH — Dorms
+// ═══════════════════════════════════════════════════════════════════════════
+
+const dorms: Entity = {
+  id: "dorms", x: 1800, y: 2110, layer: 3,
+  shapes: [
+    { type: "rect", x: -86, y: -38, w: 70, h: 54, color: "rgba(0,0,0,0.14)", radius: 3 },
+    { type: "rect", x: -90, y: -42, w: 70, h: 54, color: "#8d6e63", radius: 3 },
+    { type: "rect", x: -94, y: -48, w: 78, h: 8, color: "#6d4c41", radius: 2 },
+    { type: "rect", x: -61, y: -2, w: 12, h: 14, color: "#5d4037" },
+
+    { type: "rect", x: 20, y: -38, w: 70, h: 54, color: "rgba(0,0,0,0.14)", radius: 3 },
+    { type: "rect", x: 16, y: -42, w: 70, h: 54, color: "#8d6e63", radius: 3 },
+    { type: "rect", x: 12, y: -48, w: 78, h: 8, color: "#6d4c41", radius: 2 },
+    { type: "rect", x: 45, y: -2, w: 12, h: 14, color: "#5d4037" },
+  ],
+  label: {
+    text: "Dorms", color: "#fff", font: "bold 13px sans-serif",
+    offsetY: 28, shadow: { color: "rgba(0,0,0,0.9)", blur: 4 },
+  },
+  solid: true,
+  hitbox: { ox: -90, oy: -48, w: 180, h: 60 },
+  trigger: { type: "zone", name: "Dorms", hitbox: { ox: -122, oy: -78, w: 244, h: 122 } },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOUTHWEST — Friend Group Garages
+// ═══════════════════════════════════════════════════════════════════════════
+
+const friendGarageClusterBase: Entity[] = [];
+
+const garageRoster = [
+  { name: "Ani", color: "#ef6c57" },
+  { name: "Shrey", color: "#7e57c2" },
+  { name: "Riya", color: "#ec407a" },
+  { name: "Monica", color: "#5c6bc0" },
+  { name: "Sanjana", color: "#26a69a" },
+  { name: "Jake", color: "#8d6e63" },
+  { name: "Suraj", color: "#ffa726" },
+  { name: "Arnav", color: "#42a5f5" },
+  { name: "Sarah", color: "#ab47bc" },
+  { name: "Sarthak", color: "#66bb6a" },
+  { name: "Arav", color: "#ff7043" },
+  { name: "Sithu", color: "#78909c" },
+];
+
+const friendGarages: Entity[] = SHOW_FRIEND_GARAGES
+  ? [
+      ...friendGarageClusterBase,
+      ...garageRoster.flatMap((garage, index) => {
+        const col = index % 4;
+        const row = Math.floor(index / 4);
+        return garageEntities(
+          `garage-${garage.name.toLowerCase()}`,
+          620 + col * 124,
+          2060 + row * 104,
+          garage.name,
+          garage.color
+        );
+      }),
+    ]
+  : [];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOUTHEAST — Downtown bars & Jukebox
+// ═══════════════════════════════════════════════════════════════════════════
+
+const tots       = bldg("tots",        2400, 1950,  85, 60, "#37474f", "TOTS");
+const hokieHouse = bldg("hokie-house", 2550, 1950,  90, 65, "#861F41", "Hokie House");
+const bennys     = bldg("bennys",      2700, 1950,  85, 60, "#c62828", "Benny's Pizza");
+
+const theBurg    = bldg("the-burg",    2400, 2150,  90, 60, "#795548", "The Burg");
+const wildSide   = bldg("wild-side",   2550, 2150,  95, 65, "#2e7d32", "Wild Side");
+const bww        = bldg("bww",         2700, 2150, 105, 70, "#f9a825", "Buffalo Wild Wings");
+
 const jukebox: Entity = {
-  id: "jukebox", x: 950, y: 2500, layer: 3,
+  id: "jukebox", x: 2870, y: 2050, layer: 3,
   shapes: [
     { type: "rect", x: -17, y: -15, w: 34, h: 34, color: "rgba(0,0,0,0.15)", radius: 4 },
     { type: "rect", x: -14, y: -18, w: 28, h: 36, color: "#4a148c", radius: 4 },
@@ -191,11 +386,11 @@ const jukebox: Entity = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SE QUADRANT — Lane Stadium
+// SE QUADRANT — Lane Stadium, Cassell Coliseum & Airport
 // ═══════════════════════════════════════════════════════════════════════════
 
 const laneStadium: Entity = {
-  id: "lane-stadium", x: 2600, y: 2500, layer: 3,
+  id: "lane-stadium", x: 2550, y: 2450, layer: 3,
   shapes: [
     { type: "rect",    x: -150, y: -100, w: 300, h: 200, color: "rgba(0,0,0,0.2)",  radius: 10 },
     { type: "rect",    x: -140, y: -90,  w: 280, h: 180, color: "#861F41",           radius: 10 },
@@ -209,135 +404,95 @@ const laneStadium: Entity = {
   trigger: { type: "zone", name: "Lane Stadium", hitbox: { ox: -190, oy: -140, w: 380, h: 280 } },
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// NE QUADRANT — Airport (Relocated to match real-world Roanoke direction)
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Airport terminal building — north of the terminal road
-const airportTerminal: Entity = {
-  id: "airport-terminal", x: 2800, y: 800, layer: 3,
+const cassellColiseum: Entity = {
+  id: "cassell-coliseum", x: 1860, y: 2600, layer: 3,
   shapes: [
-    { type: "rect", x: -120, y: -40, w: 240, h: 80, color: "#546e7a", radius: 6 },
-    { type: "rect", x:  -10, y: -70, w:  20, h: 30, color: "#455a64" },
+    { type: "ellipse", x: 4,  y: 4,  rx: 118, ry: 88, color: "rgba(0,0,0,0.28)" },
+    { type: "ellipse", x: 0,  y: 0,  rx: 118, ry: 88, color: "#861F41" },
+    { type: "ellipse", x: 0,  y: 0,  rx:  96, ry: 70, color: "#5a1230" },
+    { type: "ellipse", x: 0,  y: 0,  rx:  68, ry: 49, color: "#c8904a" },
+    { type: "line",    x1: -56, y1: 0, x2: 56, y2: 0, color: "#fff",       width: 2 },
+  ],
+  label: { text: "Cassell Coliseum", color: "#fff", font: "bold 14px sans-serif", offsetY: 102, shadow: { color: "#000", blur: 5 } },
+  solid: true,
+  hitbox:  { ox: -118, oy: -88, w: 236, h: 176 },
+  trigger: { type: "zone", name: "Cassell Coliseum", hitbox: { ox: -148, oy: -118, w: 296, h: 236 } },
+};
+
+const airportTerminal: Entity = {
+  id: "airport-terminal", x: 1050, y: 2520, layer: 3,
+  shapes: [
+    { type: "rect", x: -146, y: -54, w: 292, h: 114, color: "rgba(0,0,0,0.16)", radius: 16 },
+    { type: "rect", x: -138, y: -60, w: 276, h: 104, color: "#d8e1ea", radius: 18, stroke: "#78909c", lineWidth: 2 },
+    { type: "rect", x: -118, y: -42, w: 236, h: 64, color: "#90a4ae", radius: 12 },
+    { type: "rect", x: -108, y: -34, w: 216, h: 52, color: "#cfe8ff", radius: 10, alpha: 0.9 },
+    { type: "rect", x: -66, y: 18, w: 132, h: 18, color: "#78909c", radius: 8 },
+    { type: "rect", x: -22, y: -84, w: 44, h: 26, color: "#eceff1", radius: 10, stroke: "#607d8b", lineWidth: 2 },
+    {
+      type: "text", x: 0, y: -71, text: "✈️", color: "#1565c0",
+      font: "bold 22px sans-serif",
+      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+      shadow: { color: "rgba(21,101,192,0.28)", blur: 10 },
+    },
+    {
+      type: "text", x: -62, y: 6, text: "MIA", color: "#0f172a",
+      font: "bold 10px sans-serif",
+      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+    },
+    {
+      type: "text", x: 0, y: 6, text: "SJU", color: "#0f172a",
+      font: "bold 10px sans-serif",
+      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+    },
+    {
+      type: "text", x: 62, y: 6, text: "CUN", color: "#0f172a",
+      font: "bold 10px sans-serif",
+      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+    },
   ],
   label: { text: "Airport", color: "#fff", font: "bold 18px sans-serif", offsetY: 56, shadow: { color: "rgba(0,0,0,0.8)", blur: 3 } },
-  solid: true,
-  hitbox: { ox: -125, oy: -75, w: 250, h: 120 },
-};
-
-// Drive-into trigger zone at the terminal road
-const airportTrigger: Entity = {
-  id: "airport-trigger", x: 2800, y: 875, layer: 5,
-  shapes: [{ type: "rect", x: -150, y: -20, w: 300, h: 40, color: "rgba(255,152,0,0.15)", radius: 4 }],
-  trigger: { type: "airport", name: "Airport", hitbox: { ox: -150, oy: -20, w: 300, h: 40 } },
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PERIPHERAL BUILDINGS
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Dorms — far west of rd-sw, no road conflict
-const dorms = bldg("dorms", 800, 2800, 110, 80, "#8d6e63", "Dorms");
-
-// ═══════════════════════════════════════════════════════════════════════════
-// NATURE / HIKES — outer island, boundary verified
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Cascades Waterfall Trail — SW outer edge
-// Position (550, 2300): ellipse check = 0.96 ✓; SW trigger corner = 0.974 ✓
-const cascades: Entity = {
-  id: "cascades", x: 550, y: 2300, layer: 1,
-  shapes: [
-    { type: "ellipse",  x: 0,   y: 10,  rx: 165, ry: 95, color: "#4a7c4e" },
-    { type: "triangle", x1: -90, y1: 25, x2: -25, y2: -55, x3: 50, y3: 25, color: "#5a9060" },
-    { type: "triangle", x1: -30, y1: 25, x2:  30, y2: -80, x3: 100, y3: 25, color: "#4e8455" },
-    { type: "triangle", x1: -12, y1: -35, x2: -25, y2: -55, x3: 5,  y3: -34, color: "#ecf0f1" },
-    { type: "triangle", x1:  18, y1: -56, x2:  30, y2: -80, x3: 52, y3: -52, color: "#ecf0f1" },
-    { type: "rect",     x:  14,  y: -54,  w: 9, h: 68, color: "#64b5f6", radius: 4 },
-    { type: "rect",     x:  16,  y: -56,  w: 4, h: 40, color: "#bbdefb", radius: 2, alpha: 0.75 },
-    { type: "ellipse",  x:  18,  y: 20,   rx: 22, ry: 9,  color: "rgba(100,181,246,0.38)" },
-    { type: "ellipse",  x:  18,  y: 18,   rx: 10, ry: 5,  color: "rgba(187,222,251,0.45)" },
-  ],
-  label: { text: "Cascades", color: "#fff", font: "bold 14px sans-serif", offsetY: 88, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
   solid: false,
-  trigger: { type: "zone", name: "Cascades", hitbox: { ox: -170, oy: -110, w: 340, h: 220 } },
 };
 
-// Dragon's Tooth — NE outer edge
-// Position (2940, 1050): ellipse check = 0.757 ✓; NE trigger corner = 0.965 ✓
-const dragonsTooth: Entity = {
-  id: "dragons-tooth", x: 2940, y: 1050, layer: 1,
-  shapes: [
-    { type: "ellipse",  x: 0,    y: 10,  rx: 145, ry: 85, color: "#6d6d6d" },
-    { type: "triangle", x1: -95, y1: 30, x2: -15, y2: -40, x3: 60, y3: 30,  color: "#8a8a8a" },
-    { type: "triangle", x1: -20, y1: 30, x2: 50,  y2: -35, x3: 100, y3: 30, color: "#757575" },
-    { type: "triangle", x1: -18, y1: -25, x2: 5,  y2: -105, x3: 28, y3: -25, color: "#bdbdbd" },
-    { type: "triangle", x1:   5, y1: -105, x2: 28, y2: -25, x3: 22, y3: -28, color: "#9e9e9e" },
-    { type: "triangle", x1: -70, y1: 30,  x2: -45, y2: -5,  x3: -18, y3: 30, color: "#616161" },
-    { type: "triangle", x1: -50, y1: 30,  x2: -35, y2:  5,  x3: -10, y3: 30, color: "#545454" },
-    { type: "triangle", x1:  -2, y1: -82, x2:   5, y2: -105, x3: 16, y3: -79, color: "#e8e8e8" },
-  ],
-  label: { text: "Dragon's Tooth", color: "#fff", font: "bold 14px sans-serif", offsetY: 80, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
-  solid: false,
-  trigger: { type: "zone", name: "Dragon's Tooth", hitbox: { ox: -130, oy: -120, w: 260, h: 235 } },
-};
+const airportTriggers: Entity[] = [
+  { id: "airport-mia", x: 988, y: 2548, layer: 5, shapes: [], trigger: { type: "airport", name: "Miami", destination: "miami", hitbox: { ox: -36, oy: -26, w: 72, h: 52 } } },
+  { id: "airport-sju", x: 1050, y: 2548, layer: 5, shapes: [], trigger: { type: "airport", name: "Puerto Rico", destination: "puerto-rico", hitbox: { ox: -36, oy: -26, w: 72, h: 52 } } },
+  { id: "airport-cun", x: 1112, y: 2548, layer: 5, shapes: [], trigger: { type: "airport", name: "Cancun", destination: "cancun", hitbox: { ox: -36, oy: -26, w: 72, h: 52 } } },
+];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ROAD NETWORK
 // ═══════════════════════════════════════════════════════════════════════════
-//
-// Ring road: rectangle 1400–2200 × 1400–2200 (closed loop)
-// NW spur  : ring NW corner → The Spot area (1000,1000)
-// NE spurs : ring NE corner → Hub (2300,1000) → Collegiate (2900,1000)
-// SW spur  : ring SW corner → bar district, curves to x=1200 vertical
-// SE spur  : ring SE corner → airport (ends before terminal)
-//
-// Outbound highways (Task 1 — geographically correct):
-//   North  → DC  (left) + NYC (right)
-//   South  → NC  (left) + Orlando (right)
-//   West   → Tennessee
-//   East   → Richmond (upper) + UVA (lower)
 
 const roads: Entity[] = [
-  // ── Inner ring around Drillfield ────────────────────────────────────────
-  road("rd-ring", [1400, 1400, 2200, 1400, 2200, 2200, 1400, 2200, 1400, 1400]),
+  // Ring Road around Drillfield
+  road("rd-ring", [1350, 1350, 2250, 1350, 2250, 2250, 1350, 2250, 1350, 1350]),
 
-  // ── Campus spurs ────────────────────────────────────────────────────────
-  road("rd-nw",  [1400, 1400, 1000, 1000]),
-  road("rd-ne1", [2200, 1400, 2300, 1000]),
-  road("rd-ne2", [2300, 1000, 2800, 1000, 2800, 900]),
-  road("rd-sw",  [1400, 2200, 1200, 2450, 1200, 2800]),
-  road("rd-se",  [2200, 2200, 2400, 2300, 2400, 2500]),
+  // Outbound Highways (Cleared to boundaries)
+  road("rd-north", [1800, 1350, 1800, 380]),
+  road("rd-south", [1600, 2250, 1600, 3220]),
+  road("rd-east",  [2250, 1800, 3300, 1800]),
+  road("rd-west",  [1350, 1800, 300, 1800]),
 
-  // ── Outbound arteries to island edge ────────────────────────────────────
-  // North road feeds DC (left) + NYC (right) highway signs
-  road("rd-out-n", [CX, 1400, CX, 380]),
-  // South road feeds NC (left) + Orlando (right) highway signs
-  road("rd-out-s", [CX, 2200, CX, 3220]),
-  // East road feeds Richmond (upper) + UVA (lower) highway signs
-  road("rd-out-e", [2200, CY, 3300, CY]),
-  // West road feeds Tennessee highway sign
-  road("rd-out-w", [1400, CY, 300, CY]),
+  // Internal Spurs
+  road("rd-nw",    [1350, 1350, 1120, 1120, 980, 980, 960, 720]),
+  road("rd-ne",    [2250, 1350, 2250, 950,  2900, 950]),
+  road("rd-bars",  [2250, 2050, 2800, 2050]),
+  road("rd-athletics", [2250, 2250, 2250, 2480, 2140, 2650]),
+  road("rd-airport-sw", [1350, 2250, 1185, 2335, 1050, 2400]),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HIGHWAY EXITS — geographically accurate placement at island sand edge
-//
-// Ellipse boundary check: ((x−1800)/1600)² + ((y−1800)/1500)² ≤ 1
-// All boundaries, hitboxes, and text strictly contained within the island
+// HIGHWAY EXITS
 // ═══════════════════════════════════════════════════════════════════════════
 
 const highways: Entity[] = [
-  // ── North edge ──────────────────────────────────────────────────────────
-  hwy("hwy-dc",      1660, 380,  "dc",        "DC"),
-  hwy("hwy-nyc",     1940, 380,  "nyc",       "NYC"),
-  // ── West edge ───────────────────────────────────────────────────────────
-  hwy("hwy-tenn",     300, CY,   "tennessee", "Tennessee"),
-  // ── East edge ───────────────────────────────────────────────────────────
-  hwy("hwy-richmond", 3300, 1660, "richmond", "Richmond"),
-  hwy("hwy-uva",      3300, 1940, "uva",      "UVA"),
-  // ── South edge ──────────────────────────────────────────────────────────
-  hwy("hwy-nc",      1660, 3220, "nc",        "NC"),
+  hwy("hwy-dc",       1700, 380,  "dc",        "DC"),
+  hwy("hwy-nyc",      1900, 380,  "nyc",       "NYC"),
+  hwy("hwy-tenn",      300, 1800, "tennessee", "Tennessee"),
+  hwy("hwy-richmond", 3300, 1700, "richmond",  "Richmond"),
+  hwy("hwy-uva",      3300, 1900, "uva",       "UVA"),
+  hwy("hwy-nc",       1600, 3220, "nc",        "NC"),
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -356,15 +511,17 @@ export const vtIsland: MapData = {
     cascades, dragonsTooth,
     ...roads,
     theSpot, abcStore,
-    theHub, collegiate, edges,
+    theHub, alight, collegiate, edges,
     tots, hokieHouse, bennys,
     theBurg, wildSide, bww, jukebox,
-    laneStadium, airportTerminal, airportTrigger,
+    laneStadium, cassellColiseum, airportTerminal, ...airportTriggers,
+    fratRow, graveyard,
     dorms,
+    ...friendGarages,
     ...highways,
   ],
   items: [],
   npcs: [
-    { id: "milo", name: "Milo", spawnX: CX, spawnY: CY, speed: 40, wanderRadius: 300, bodyColor: "#1a1a1a", accentColor: "#ffffff" },
+    { id: "milo", name: "Milo", spawnX: CX, spawnY: CY, speed: 40, wanderRadius: 300, spriteSrc: "/images/milo.png", bodyColor: "#1a1a1a", accentColor: "#ffffff" },
   ],
 };

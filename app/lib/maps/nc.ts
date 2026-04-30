@@ -4,9 +4,9 @@
 
 import type { Entity, MapData, Shape } from "../types";
 
-const W  = 2200;
-const CX = W / 2;   // 1100
-const CY = W / 2;   // 1100
+const W  = 3000;
+const CX = W / 2;   // 1500
+const CY = W / 2;   // 1500
 
 // ── Utilities ─────────────────────────────────────────────────────────────
 
@@ -73,12 +73,12 @@ const ocean: Entity = {
 const island: Entity = {
   id: "island", x: 0, y: 0, layer: 0,
   shapes: [
-    { type: "ellipse", x: CX, y: CY, rx: 912, ry: 812, color: "#e8d5a3" },
-    { type: "ellipse", x: CX, y: CY, rx: 900, ry: 800, color: "#4caf50" },
+    { type: "ellipse", x: CX, y: CY, rx: 1260, ry: 1120, color: "#e8d5a3" },
+    { type: "ellipse", x: CX, y: CY, rx: 1245, ry: 1105, color: "#4caf50" },
     // Subtle NC State red tint on northern half
-    { type: "ellipse", x: CX, y: CY - 480, rx: 870, ry: 520, color: "rgba(180,0,0,0.08)" },
+    { type: "ellipse", x: CX, y: CY - 640, rx: 1180, ry: 650, color: "rgba(180,0,0,0.08)" },
     // Subtle UNC Carolina blue tint on southern half
-    { type: "ellipse", x: CX, y: CY + 480, rx: 870, ry: 520, color: "rgba(75,156,211,0.09)" },
+    { type: "ellipse", x: CX, y: CY + 640, rx: 1180, ry: 650, color: "rgba(75,156,211,0.09)" },
   ],
 };
 
@@ -86,26 +86,31 @@ const island: Entity = {
 
 const roads: Entity[] = [
   // Rivalry Road — the E–W divider between the two campuses
-  road("rivalry-rd", [340, CY, 1860, CY]),
+  road("rivalry-rd", [740, CY, 2260, CY]),
   // Main N–S avenue
-  road("main-ave",   [CX, 320, CX, 1880]),
+  road("main-ave",   [CX, 720, CX, 2280]),
   // Short campus loop roads
-  road("ncst-loop",  [680, 560, 680, 920, 1020, 920]),
-  road("unc-loop",   [1180, 1280, 1540, 1280, 1540, 1620]),
+  road("ncst-loop",  [1080, 960, 1080, 1320, 1420, 1320]),
+  road("unc-loop",   [1580, 1680, 1940, 1680, 1940, 2020]),
 ];
 
 // ── NC State Campus — north half ──────────────────────────────────────────
 // Wolfpack red (#cc0000) palette
 
 const ncStateBuildings: Entity[] = [
-  campusBldg("ncst-coliseum", 818,  702, 122, 78, "#9a0000", "Reynolds Coliseum", "#ffcdd2"),
-  campusBldg("ncst-union",    965,  678,  95, 60, "#b71c1c", "Talley Student Union", "#ffcdd2"),
-  campusBldg("ncst-lib",      834,  808,  82, 56, "#c62828", "D.H. Hill Library", "#ffcdd2"),
+  campusBldg("ncst-coliseum", 1218, 1102, 122, 78, "#9a0000", "Reynolds Coliseum", "#ffcdd2"),
+  campusBldg("ncst-union",    1365, 1078,  95, 60, "#b71c1c", "Talley Student Union", "#ffcdd2"),
+  campusBldg("ncst-lib",      1234, 1208,  82, 56, "#c62828", "D.H. Hill Library", "#ffcdd2"),
+];
+
+const ncStateResidences: Entity[] = [
+  // Keep Riya in the NC State area
+  campusBldg("riyas-apartment", 986, 1110, 82, 86, "#8d3b3b", "Riya's Apartment", "#ffcdd2"),
 ];
 
 // Zone marker — large glow + nameplate over the cluster
 const ncStateZone: Entity = {
-  id: "ncstate-zone", x: 878, y: 745, layer: 3,
+  id: "ncstate-zone", x: 1278, y: 1145, layer: 3,
   shapes: [
     { type: "rect", x: -175, y: -195, w: 350, h: 390, color: "rgba(180,0,0,0.05)", radius: 8 },
     { type: "rect", x: -58, y: 198, w: 116, h: 30, color: "rgba(140,0,0,0.90)", radius: 5 },
@@ -122,7 +127,7 @@ const ncStateZone: Entity = {
 
 // Iconic circular Dean Dome arena
 const deanDome: Entity = {
-  id: "dean-dome", x: 1252, y: 1432, layer: 3,
+  id: "dean-dome", x: 1652, y: 1832, layer: 3,
   shapes: [
     { type: "ellipse", x: 4, y: 5, rx: 74, ry: 60, color: "rgba(0,0,0,0.22)" },
     { type: "ellipse", x: 0, y: 0, rx: 74, ry: 60, color: "#1565c0" },
@@ -137,13 +142,13 @@ const deanDome: Entity = {
 };
 
 const uncBuildings: Entity[] = [
-  campusBldg("unc-wilson",  1382, 1335, 100, 65, "#1565c0", "Wilson Library", "#bbdefb"),
-  campusBldg("unc-bell",    1265, 1285,  85, 55, "#1976d2", "Bell Tower Bldg", "#bbdefb"),
-  campusBldg("unc-franklin",1398, 1458,  90, 60, "#1e88e5", "Franklin Street",  "#bbdefb"),
+  campusBldg("unc-wilson",  1782, 1735, 100, 65, "#1565c0", "Wilson Library", "#bbdefb"),
+  campusBldg("unc-bell",    1665, 1685,  85, 55, "#1976d2", "Bell Tower Bldg", "#bbdefb"),
+  campusBldg("unc-franklin",1798, 1858,  90, 60, "#1e88e5", "Franklin Street",  "#bbdefb"),
 ];
 
 const uncZone: Entity = {
-  id: "unc-zone", x: 1305, y: 1390, layer: 3,
+  id: "unc-zone", x: 1705, y: 1790, layer: 3,
   shapes: [
     { type: "rect", x: -175, y: -192, w: 350, h: 384, color: "rgba(75,156,211,0.06)", radius: 8 },
     { type: "rect", x: -72, y: 196, w: 144, h: 30, color: "rgba(21,101,192,0.92)", radius: 5 },
@@ -158,7 +163,7 @@ const uncZone: Entity = {
 // ── Return trigger ─────────────────────────────────────────────────────────
 
 const returnTrigger: Entity = {
-  id: "return", x: CX, y: CY + 630, layer: 5,
+  id: "return", x: CX, y: CY + 880, layer: 5,
   shapes: [
     { type: "rect", x: -70, y: -18, w: 140, h: 36, color: "rgba(33,150,243,0.88)", radius: 8 },
     { type: "text", x: 0, y: 0, text: "← Back to VT", color: "#fff",
@@ -176,11 +181,19 @@ export const ncMap: MapData = {
   spawnX: CX, spawnY: CY + 100,
   spawnRotation: -Math.PI / 2,
   bgColor: "#0e4a7a",
-  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 900, ry: 800 },
+  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 1245, ry: 1105 },
   entities: [
     ocean, island,
     ...roads,
-    ...ncStateBuildings, ncStateZone,
+    ...ncStateBuildings, ...ncStateResidences, ncStateZone,
+    // Charlotte cluster (far corner)
+    campusBldg("sithus-house",   CX + 760, CY + 620,  90, 70, "#7f2f2f", "Sithu's House", "#ffcdd2"),
+    campusBldg("monicas-house",  CX + 880, CY + 700,  96, 74, "#a04444", "Monica's House", "#ffcdd2"),
+    { id: "charlotte-label", x: CX + 820, y: CY + 560, layer: 4, shapes: [
+      { type: "text", x: 0, y: 0, text: "Charlotte", color: "#fff", font: "bold 16px sans-serif",
+        align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+        shadow: { color: "rgba(0,0,0,0.85)", blur: 4 } },
+    ]},
     deanDome, ...uncBuildings, uncZone,
     returnTrigger,
   ],

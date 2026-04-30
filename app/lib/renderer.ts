@@ -8,6 +8,17 @@ const CAR_L = 38;
 const CAR_W = 22;
 const MM_SIZE = 170;
 const MM_MARGIN = 14;
+const ENTITY_SAFETY_BUFFER_PX = 20;
+
+const IMG_CACHE = new Map<string, HTMLImageElement>();
+function getImage(src: string): HTMLImageElement {
+  const cached = IMG_CACHE.get(src);
+  if (cached) return cached;
+  const img = new Image();
+  img.src = src;
+  IMG_CACHE.set(src, img);
+  return img;
+}
 
 // ── Rounded-rect helper ───────────────────────────────────────────────────
 
@@ -30,6 +41,10 @@ function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
 function drawShape(ctx: CanvasRenderingContext2D, s: Shape) {
   ctx.save();
   if (s.alpha !== undefined) ctx.globalAlpha = s.alpha;
+  if (s.shadow) {
+    ctx.shadowColor = s.shadow.color;
+    ctx.shadowBlur = s.shadow.blur;
+  }
 
   switch (s.type) {
     case "rect": {
@@ -104,19 +119,12 @@ function drawShape(ctx: CanvasRenderingContext2D, s: Shape) {
       // produces miter spikes or flat endcap blobs where roads intersect.
       ctx.lineCap  = "round";
       ctx.lineJoin = "round";
-      // Optional canvas shadow (avoids doubling a separate shadow stripe
-      // entity at junctions, which is what causes the "stacked block" look).
-      if (s.shadow) {
-        ctx.shadowColor = s.shadow.color;
-        ctx.shadowBlur  = s.shadow.blur;
-      }
       if (s.dash) ctx.setLineDash(s.dash);
       ctx.beginPath();
       ctx.moveTo(p[0], p[1]);
       for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
       ctx.stroke();
       if (s.dash)   ctx.setLineDash([]);
-      if (s.shadow) { ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; }
       break;
     }
     case "polygon": {
@@ -136,10 +144,6 @@ function drawShape(ctx: CanvasRenderingContext2D, s: Shape) {
       break;
     }
     case "text": {
-      if (s.shadow) {
-        ctx.shadowColor = s.shadow.color;
-        ctx.shadowBlur = s.shadow.blur;
-      }
       ctx.fillStyle = s.color ?? "#fff";
       ctx.font = s.font ?? "12px sans-serif";
       ctx.textAlign = (s.align as CanvasTextAlign) ?? "center";
@@ -171,6 +175,23 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity) {
     ctx.restore();
   }
   ctx.restore();
+}
+
+function buildBoundaryPath(ctx: CanvasRenderingContext2D, map: MapData, insetPx = 0) {
+  ctx.beginPath();
+  if (map.boundary.type === "ellipse") {
+    const rx = Math.max(1, map.boundary.rx - insetPx);
+    const ry = Math.max(1, map.boundary.ry - insetPx);
+    ctx.ellipse(map.boundary.cx, map.boundary.cy, rx, ry, 0, 0, Math.PI * 2);
+    return;
+  }
+
+  for (const ellipse of map.boundary.ellipses) {
+    const rx = Math.max(1, ellipse.rx - insetPx);
+    const ry = Math.max(1, ellipse.ry - insetPx);
+    ctx.moveTo(ellipse.cx + rx, ellipse.cy);
+    ctx.ellipse(ellipse.cx, ellipse.cy, rx, ry, 0, 0, Math.PI * 2);
+  }
 }
 
 // ── Car renderer ──────────────────────────────────────────────────────────
@@ -218,7 +239,7 @@ function drawCar(ctx: CanvasRenderingContext2D, car: CarState) {
 //              ╰────────────╯
 //
 
-function drawNpc(ctx: CanvasRenderingContext2D, npc: any) {
+function drawNpc(ctx: CanvasRenderingContext2D, npc: NpcState) {
   ctx.save();
   ctx.translate(npc.x, npc.y);
 
@@ -227,6 +248,16 @@ function drawNpc(ctx: CanvasRenderingContext2D, npc: any) {
   ctx.beginPath();
   ctx.ellipse(0, 20, 15, 5, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  if (npc.spriteSrc) {
+    const img = getImage(npc.spriteSrc);
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(img, -24, -34, 48, 48);
+      ctx.restore();
+      return;
+    }
+  }
 
   // ── Ears — drawn first so head circle covers the bases ────────────────
   // Outer ears (same as bodyColor so they read as part of the head)
@@ -335,11 +366,19 @@ function drawMinimap(ctx: CanvasRenderingContext2D, map: MapData, car: CarState,
   rrect(ctx, mx, my, MM_SIZE, MM_SIZE, 8);
   ctx.clip();
 
-  // Island
+  // Island(s)
   ctx.fillStyle = "#4caf50";
-  ctx.beginPath();
-  ctx.ellipse(mx + map.boundary.cx * scale, my + map.boundary.cy * scale, map.boundary.rx * scale, map.boundary.ry * scale, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (map.boundary.type === "ellipse") {
+    ctx.beginPath();
+    ctx.ellipse(mx + map.boundary.cx * scale, my + map.boundary.cy * scale, map.boundary.rx * scale, map.boundary.ry * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    for (const e of map.boundary.ellipses) {
+      ctx.beginPath();
+      ctx.ellipse(mx + e.cx * scale, my + e.cy * scale, e.rx * scale, e.ry * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   // Roads (layer 2 polylines, no dashes)
   ctx.strokeStyle = "#78909c";
@@ -453,13 +492,26 @@ export function renderFrame(
 
   // Draw all entities in strict layer order
   const layered = [...map.entities].sort((a, b) => a.layer - b.layer);
-  for (const e of layered) drawEntity(ctx, e);
+
+  for (const e of layered) {
+    if (e.layer === 0) drawEntity(ctx, e);
+  }
+
+  // Clamp all gameplay entities, labels, and soft background treatments to an
+  // inset version of the island boundary so nothing renders across the edge.
+  ctx.save();
+  buildBoundaryPath(ctx, map, ENTITY_SAFETY_BUFFER_PX);
+  ctx.clip();
+  for (const e of layered) {
+    if (e.layer > 0) drawEntity(ctx, e);
+  }
 
   // NPCs
   for (const npc of npcs) drawNpc(ctx, npc);
 
   // Car
   drawCar(ctx, car);
+  ctx.restore();
 
   // HUD (screen-space)
   ctx.setTransform(1, 0, 0, 1, 0, 0);

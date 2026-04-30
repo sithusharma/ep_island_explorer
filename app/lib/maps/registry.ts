@@ -38,6 +38,4 @@ export const AIRPORT_DESTINATIONS = [
   { id: "miami",        label: "Miami" },
   { id: "puerto-rico",  label: "Puerto Rico" },
   { id: "cancun",       label: "Cancún" },
-  { id: "nyc",          label: "NYC" },
-  { id: "orlando",      label: "Orlando" },
 ];

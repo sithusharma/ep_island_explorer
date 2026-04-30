@@ -15,6 +15,7 @@ export function initNpc(def: NpcDef): NpcState {
     targetY: def.spawnY,
     speed: def.speed,
     wanderRadius: def.wanderRadius,
+    spriteSrc: def.spriteSrc,
     bodyColor: def.bodyColor,
     accentColor: def.accentColor,
     state: "idle",

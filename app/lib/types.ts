@@ -10,9 +10,12 @@ export interface Hitbox {
 }
 
 export interface Trigger {
-  type: "zone" | "airport" | "jukebox" | "highway";
+  type: "zone" | "airport" | "jukebox" | "highway" | "ferry" | "graveyard";
   name: string;
   destination?: string;
+  /** Ferry: world-space coordinates the car teleports to on the same map */
+  destX?: number;
+  destY?: number;
   hitbox: Hitbox;
 }
 
@@ -83,6 +86,8 @@ export interface NpcDef {
   spawnY: number;
   speed: number;
   wanderRadius: number;
+  /** Optional sprite path under /public (ex: "/images/milo.png") */
+  spriteSrc?: string;
   bodyColor: string;
   accentColor: string;
 }
@@ -94,13 +99,9 @@ export interface MapItem {
   y: number;
 }
 
-export interface Boundary {
-  type: "ellipse";
-  cx: number;
-  cy: number;
-  rx: number;
-  ry: number;
-}
+export type Boundary =
+  | { type: "ellipse";       cx: number; cy: number; rx: number; ry: number }
+  | { type: "multi-ellipse"; ellipses: Array<{ cx: number; cy: number; rx: number; ry: number }> };
 
 export interface MapData {
   id: string;
@@ -135,6 +136,7 @@ export interface NpcState {
   targetY: number;
   speed: number;
   wanderRadius: number;
+  spriteSrc?: string;
   bodyColor: string;
   accentColor: string;
   state: "walking" | "idle";
@@ -144,8 +146,10 @@ export interface NpcState {
 }
 
 export interface ActiveTrigger {
-  type: "zone" | "airport" | "highway" | "jukebox";
+  type: "zone" | "airport" | "highway" | "jukebox" | "ferry" | "graveyard";
   name: string;
   entityId: string;
   destination?: string;
+  screenX?: number;
+  screenY?: number;
 }

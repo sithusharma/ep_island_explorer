@@ -48,9 +48,18 @@ export function checkSolids(car: CarState, entities: Entity[]): boolean {
 // ── Boundary ──────────────────────────────────────────────────────────────
 
 export function isInBoundary(x: number, y: number, b: Boundary): boolean {
-  const dx = (x - b.cx) / b.rx;
-  const dy = (y - b.cy) / b.ry;
-  return dx * dx + dy * dy <= 1;
+  if (b.type === "ellipse") {
+    const dx = (x - b.cx) / b.rx;
+    const dy = (y - b.cy) / b.ry;
+    return dx * dx + dy * dy <= 1;
+  }
+  // multi-ellipse: in-bounds when inside ANY of the sub-ellipses
+  for (const e of b.ellipses) {
+    const dx = (x - e.cx) / e.rx;
+    const dy = (y - e.cy) / e.ry;
+    if (dx * dx + dy * dy <= 1) return true;
+  }
+  return false;
 }
 
 // ── Trigger detection ─────────────────────────────────────────────────────

@@ -47,12 +47,13 @@ export default function LoginForm({ onLoginSuccess }: { onLoginSuccess: (user: a
   return (
     <div 
       className="flex flex-col items-center justify-center h-screen bg-cover bg-center text-white"
-      style={{ backgroundImage: "url('/group-photo.jpg')" }} 
+      style={{ backgroundImage: "url('/images/group_photo.JPG')" }} 
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      {/* Removed backdrop-blur-sm here so the image stays sharp */}
+      <div className="absolute inset-0 bg-black/60"></div>
 
       <div className="relative z-10 bg-neutral-900/80 p-8 rounded-xl shadow-2xl w-96 border border-neutral-700">
-        <h2 className="text-3xl font-bold mb-6 text-center text-blue-400">VT Island</h2>
+        <h2 className="text-3xl font-bold mb-6 text-center text-blue-400">Welcome to VT Island!</h2>
         
         {error && <p className="text-red-400 mb-4 text-center font-semibold">{error}</p>}
         
