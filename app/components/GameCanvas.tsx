@@ -1,49 +1,65 @@
 "use client";
 
 import { useRef, useCallback, useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { useInput } from "@/app/hooks/useInput";
 import { useEngine } from "@/app/hooks/useEngine";
+import { useMultiplayer } from "@/app/hooks/useMultiplayer";
+import { useGameSession } from "@/app/hooks/useGameSession";
+import type { PeerState } from "@/app/lib/types";
 import JukeboxUI from "./JukeboxUI";
 import MemoryGallery from "./MemoryGallery";
 
-// Icon map for known trigger types / names
+// ── Icon / accent helpers ─────────────────────────────────────────────────────
+
 function triggerIcon(type: string, name: string): string {
   if (type === "jukebox")   return "♫";
   if (type === "graveyard") return "🪦";
-  if (name.toLowerCase().includes("stadium")) return "🏟";
+  if (name.toLowerCase().includes("stadium") || name.toLowerCase().includes("coliseum")) return "🏟";
   if (name.toLowerCase().includes("pizza") || name.toLowerCase().includes("wings")) return "🍕";
   if (name.toLowerCase().includes("bar") || name.toLowerCase().includes("house") || name.toLowerCase().includes("burg")) return "🍺";
-  if (name.toLowerCase().includes("weed") || name.toLowerCase().includes("wild")) return "🌿";
+  if (name.toLowerCase().includes("wild")) return "🌿";
   if (name.toLowerCase().includes("dorm")) return "🛏";
   if (name.toLowerCase().includes("apt") || name.toLowerCase().includes("apartment") || name.toLowerCase().includes("hub")) return "🏠";
   if (name.toLowerCase().includes("store")) return "🛒";
+  if (name.toLowerCase().includes("beach") || name.toLowerCase().includes("bay")) return "🏖";
+  if (name.toLowerCase().includes("forest") || name.toLowerCase().includes("yunque")) return "🌲";
+  if (name.toLowerCase().includes("frat")) return "🏛";
   return "📍";
 }
 
-// Accent colour per trigger type
 function triggerAccent(type: string): string {
   if (type === "jukebox")   return "border-purple-500/40 text-purple-400";
   if (type === "graveyard") return "border-gray-600/40 text-gray-400";
   return "border-white/20 text-white";
 }
 
-export default function GameCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+// ── Component ─────────────────────────────────────────────────────────────────
+
+interface Props {
+  user: User;
+}
+
+export default function GameCanvas({ user }: Props) {
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef({ w: 0, h: 0 });
   const keys = useInput();
+
   const [activeGallery, setActiveGallery] = useState<string | null>(null);
+  const [showJukebox,   setShowJukebox]   = useState(false);
   const [showGraveyard, setShowGraveyard] = useState(false);
 
-  // Sync canvas size
+  // ── Canvas sizing ──────────────────────────────────────────────────────────
+
   const syncSize = useCallback(() => {
     const cvs = canvasRef.current;
     if (!cvs) return;
     const dpr = window.devicePixelRatio || 1;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    cvs.width = w * dpr;
+    cvs.width  = w * dpr;
     cvs.height = h * dpr;
-    cvs.style.width = `${w}px`;
+    cvs.style.width  = `${w}px`;
     cvs.style.height = `${h}px`;
     viewportRef.current = { w, h };
   }, []);
@@ -51,37 +67,71 @@ export default function GameCanvas() {
   const canvasCallbackRef = useCallback(
     (node: HTMLCanvasElement | null) => {
       (canvasRef as React.MutableRefObject<HTMLCanvasElement | null>).current = node;
-      if (node) {
-        syncSize();
-        window.addEventListener("resize", syncSize);
-      }
+      if (node) { syncSize(); window.addEventListener("resize", syncSize); }
     },
     [syncSize]
   );
 
-  // Engine
-  const { activeTrigger, startTransition } = useEngine(canvasRef, viewportRef, keys);
+  // ── Peers ref — written by useMultiplayer, read by useEngine each frame ────
 
-  const [showJukebox, setShowJukebox] = useState(false);
+  const peersRef = useRef<PeerState[]>([]);
 
-  // Universal Enter handler
+  // ── Snapshot ref — stable getter for the current car position ─────────────
+
+  const snapshotRef = useRef<() => { x: number; y: number; rotation: number; currentMap: string }>(
+    () => ({ x: 0, y: 0, rotation: 0, currentMap: "vt-island" })
+  );
+
+  // ── Game engine ────────────────────────────────────────────────────────────
+
+  const { activeTrigger, activeMapId, carRef } = useEngine(canvasRef, viewportRef, keys, peersRef);
+
+  // Wire the snapshot getter to the live engine refs
+  useEffect(() => {
+    snapshotRef.current = () => ({
+      x: carRef.current.x,
+      y: carRef.current.y,
+      rotation: carRef.current.rotation,
+      currentMap: activeMapId,
+    });
+  }, [carRef, activeMapId]);
+
+  // ── Multiplayer ────────────────────────────────────────────────────────────
+
+  const username = user.user_metadata?.username as string | undefined
+    ?? user.email?.split("@")[0]
+    ?? "Player";
+
+  const { peers } = useMultiplayer(user.id, username, snapshotRef);
+
+  // Sync peers → peersRef so the renderer can read them without React re-renders
+  useEffect(() => {
+    peersRef.current = Array.from(peers.values()).map((p) => ({
+      id: p.id,
+      username: p.username,
+      renderX: p.renderX ?? p.x,
+      renderY: p.renderY ?? p.y,
+      renderRotation: p.renderRotation ?? p.rotation,
+    }));
+  }, [peers]);
+
+  // ── Game session (Supabase Realtime) ──────────────────────────────────────
+
+  const { session, isArtifact } = useGameSession();
+
+  // ── Keyboard handlers ─────────────────────────────────────────────────────
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter") return;
       if (!activeTrigger) return;
-      if (activeTrigger.type === "jukebox") {
-        setShowJukebox(true);
-        return;
-      }
-      if (activeTrigger.type === "graveyard") {
-        setShowGraveyard(true);
-        return;
-      }
+      if (activeTrigger.type === "jukebox")   { setShowJukebox(true);   return; }
+      if (activeTrigger.type === "graveyard") { setShowGraveyard(true); return; }
       setActiveGallery(activeTrigger.entityId);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeTrigger, startTransition]);
+  }, [activeTrigger]);
 
   useEffect(() => {
     if (!showGraveyard) return;
@@ -90,10 +140,11 @@ export default function GameCanvas() {
     return () => window.removeEventListener("keydown", onEsc);
   }, [showGraveyard]);
 
-  // Determine whether to show the prompt
-  const showPrompt = activeTrigger !== null;
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const showPrompt = activeTrigger !== null && !activeGallery && !showJukebox && !showGraveyard;
   const accent = activeTrigger ? triggerAccent(activeTrigger.type) : "";
-  const icon = activeTrigger ? triggerIcon(activeTrigger.type, activeTrigger.name) : "";
+  const icon   = activeTrigger ? triggerIcon(activeTrigger.type, activeTrigger.name) : "";
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
@@ -107,34 +158,54 @@ export default function GameCanvas() {
         </div>
       )}
 
-      {/* Memory Gallery */}
-      {activeGallery && (
-        <MemoryGallery 
-          locationId={activeGallery} 
-          onClose={() => setActiveGallery(null)} 
-        />
+      {/* Peer count badge */}
+      {peers.size > 0 && (
+        <div className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs text-cyan-400 backdrop-blur-sm z-10">
+          {peers.size} online
+        </div>
       )}
 
-        {showJukebox && (
-          <JukeboxUI onClose={() => setShowJukebox(false)} />
-        )}
+      {/* Artifact mode ribbon */}
+      {isArtifact && (
+        <div className="absolute inset-x-0 top-0 flex justify-center py-2 bg-amber-500/20 backdrop-blur-sm z-10">
+          <span className="text-xs font-semibold text-amber-300 tracking-widest uppercase">
+            ✦ Artifact Mode — the journey lives on ✦
+          </span>
+        </div>
+      )}
 
-        {/* Graveyard alert */}
-        {showGraveyard && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowGraveyard(false)}
-          >
-            <div className="text-center" onClick={(e) => e.stopPropagation()}>
-              <p className="text-4xl font-bold tracking-wide text-white">
-                Here lies the fallen members.
-              </p>
-              <p className="mt-5 text-sm text-gray-500">Click or press Esc to close</p>
-            </div>
+      {/* Stage debug badge (remove in prod) */}
+      {session && !isArtifact && (
+        <div className="absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs text-white/50 backdrop-blur-sm z-10">
+          Stage {session.current_stage + 1} / 7
+        </div>
+      )}
+
+      {/* Memory Gallery */}
+      {activeGallery && (
+        <MemoryGallery locationId={activeGallery} onClose={() => setActiveGallery(null)} />
+      )}
+
+      {/* Jukebox */}
+      {showJukebox && <JukeboxUI onClose={() => setShowJukebox(false)} />}
+
+      {/* Graveyard alert */}
+      {showGraveyard && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowGraveyard(false)}
+        >
+          <div className="text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-4xl font-bold tracking-wide text-white">
+              Here lies the fallen members.
+            </p>
+            <p className="mt-5 text-sm text-gray-500">Click or press Esc to close</p>
           </div>
-        )}
-      {/* Universal "Press Enter" prompt — shown for every trigger */}
-      {showPrompt && !activeGallery && (
+        </div>
+      )}
+
+      {/* Universal "Press Enter" prompt */}
+      {showPrompt && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 z-20">
           <div
             className={`rounded-2xl border bg-black/85 px-8 py-4 text-center shadow-2xl backdrop-blur-md max-w-md w-[92%] transition-all duration-200 ${accent}`}

@@ -2,7 +2,7 @@
 // Data-driven canvas renderer — draws any MapData + car + NPCs + HUD
 // ---------------------------------------------------------------------------
 
-import type { Shape, Entity, MapData, CarState, NpcState } from "./types";
+import type { Shape, Entity, MapData, CarState, NpcState, PeerState } from "./types";
 
 const CAR_L = 38;
 const CAR_W = 22;
@@ -225,6 +225,50 @@ function drawCar(ctx: CanvasRenderingContext2D, car: CarState) {
   ctx.fillRect(CAR_L / 2 - 3, -CAR_W / 2 + 2, 3, 5);
   ctx.fillRect(CAR_L / 2 - 3, CAR_W / 2 - 7, 3, 5);
 
+  ctx.restore();
+}
+
+// ── Peer car renderer ────────────────────────────────────────────────────────
+// Peer cars are drawn in teal with a username label so players can tell them
+// apart from the local (red) car.
+
+function drawPeerCar(ctx: CanvasRenderingContext2D, peer: PeerState) {
+  const { renderX: x, renderY: y, renderRotation: rot } = peer;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.beginPath();
+  ctx.ellipse(2, 3, CAR_L / 2 + 2, CAR_W / 2 + 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body — teal so it stands out from the player's red car
+  ctx.fillStyle = "#00838f";
+  rrect(ctx, -CAR_L / 2, -CAR_W / 2, CAR_L, CAR_W, 5);
+  ctx.fill();
+
+  // Windshield
+  ctx.fillStyle = "#b2ebf2";
+  ctx.fillRect(CAR_L / 2 - 11, -CAR_W / 2 + 3, 9, CAR_W - 6);
+
+  // Rear
+  ctx.fillStyle = "#006064";
+  ctx.fillRect(-CAR_L / 2, -CAR_W / 2 + 2, 6, CAR_W - 4);
+
+  ctx.restore();
+
+  // Username label (screen-space aligned, drawn after rotation reset)
+  ctx.save();
+  ctx.translate(x, y - CAR_W / 2 - 14);
+  ctx.font = "bold 11px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(-ctx.measureText(peer.username).width / 2 - 4, -8, ctx.measureText(peer.username).width + 8, 16);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(peer.username, 0, 0);
   ctx.restore();
 }
 
@@ -479,7 +523,8 @@ export function renderFrame(
   npcs: NpcState[],
   viewport: { w: number; h: number },
   dpr: number,
-  fadeAlpha: number
+  fadeAlpha: number,
+  peers: PeerState[] = []
 ) {
   const { w: vw, h: vh } = viewport;
 
@@ -509,7 +554,10 @@ export function renderFrame(
   // NPCs
   for (const npc of npcs) drawNpc(ctx, npc);
 
-  // Car
+  // Peer cars (other players, behind the local car)
+  for (const peer of peers) drawPeerCar(ctx, peer);
+
+  // Local car (always on top)
   drawCar(ctx, car);
   ctx.restore();
 

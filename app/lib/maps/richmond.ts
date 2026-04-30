@@ -79,6 +79,70 @@ function officeBldg(
   };
 }
 
+function bgBldg(
+  id: string, x: number, y: number,
+  w: number, h: number,
+  color: string,
+): Entity {
+  const roof = dk(color, 25);
+  const shapes: Shape[] = [
+    { type: "rect", x: -(w / 2) + 3, y: -(h / 2) + 3, w, h, color: "rgba(0,0,0,0.15)", radius: 2 },
+    { type: "rect", x: -(w / 2), y: -(h / 2), w, h, color, radius: 2 },
+    { type: "rect", x: -(w / 2) - 2, y: -(h / 2) - 5, w: w + 4, h: 6, color: roof, radius: 1 },
+  ];
+  const cols = Math.max(1, Math.floor((w - 14) / 14));
+  const rows = Math.max(1, Math.floor((h - 20) / 16));
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      shapes.push({
+        type: "rect",
+        x: -(w / 2) + 7 + col * 14, y: -(h / 2) + 10 + row * 16,
+        w: 8, h: 10, color: "rgba(200,220,255,0.20)", radius: 1,
+      });
+    }
+  }
+  return {
+    id, x, y, layer: 3, shapes,
+    solid: true,
+    hitbox: { ox: -(w / 2) - 2, oy: -(h / 2) - 6, w: w + 4, h: h + 10 },
+  };
+}
+
+function corpBldg(
+  id: string, x: number, y: number,
+  w: number, h: number,
+  bodyColor: string, accentColor: string, name: string,
+  signText: string,
+): Entity {
+  const roof = dk(bodyColor, 30);
+  const shapes: Shape[] = [
+    { type: "rect", x: -(w / 2) + 4, y: -(h / 2) + 4, w, h, color: "rgba(0,0,0,0.22)", radius: 4 },
+    { type: "rect", x: -(w / 2), y: -(h / 2), w, h, color: bodyColor, radius: 4 },
+    { type: "rect", x: -(w / 2) - 3, y: -(h / 2) - 10, w: w + 6, h: 12, color: roof, radius: 3 },
+    // sign band
+    { type: "rect", x: -(w / 2), y: h / 2 - 22, w, h: 22, color: accentColor, radius: 2 },
+    { type: "text", x: 0, y: h / 2 - 11, text: signText, color: "#fff",
+      font: "bold 9px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+  ];
+  const cols = Math.max(2, Math.floor((w - 20) / 18));
+  const rows = Math.max(2, Math.floor((h - 38) / 20));
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      shapes.push({
+        type: "rect",
+        x: -(w / 2) + 10 + col * 18, y: -(h / 2) + 12 + row * 20,
+        w: 10, h: 12, color: "rgba(200,230,255,0.30)", radius: 1,
+      });
+    }
+  }
+  return {
+    id, x, y, layer: 3, shapes,
+    label: { text: name, color: "#fff", font: "bold 12px sans-serif", offsetY: h / 2 + 14, shadow: { color: "rgba(0,0,0,0.9)", blur: 3 } },
+    solid: true,
+    hitbox: { ox: -(w / 2) - 4, oy: -(h / 2) - 12, w: w + 8, h: h + 18 },
+  };
+}
+
 function road(id: string, pts: number[]): Entity {
   return {
     id, x: 0, y: 0, layer: 2,
@@ -109,6 +173,8 @@ const roads: Entity[] = [
   road("cross-ave", [1100, 500, 1100, 1710]),
   road("west-spur", [640, 1120, 640, 1490]),
   road("east-spur", [1560, 1120, 1560, 1490]),
+  road("corp-st", [380, 960, 960, 960]),
+  road("corp-spur", [640, 960, 640, 1120]),
 ];
 
 const fancyShapes: Shape[] = [
@@ -156,6 +222,21 @@ const downtown: Entity[] = [
   brickBldg("buz-and-neds", 1625, 1218, 108, 60, "#7a3b1e", "Buz and Ned's"),
 ];
 
+const corpRow: Entity[] = [
+  corpBldg("carmax",          490,  900, 108, 82, "#1a1a2e", "#c62828", "CarMax",          "CarMax"),
+  corpBldg("dominion-energy", 780,  900, 116, 86, "#0d1b3e", "#1565c0", "Dominion Energy", "Dominion Energy"),
+];
+
+const bgBuildings: Entity[] = [
+  bgBldg("bg-west-1",  420,  900,  58, 48, "#4a3728"),
+  bgBldg("bg-west-2",  880,  900,  52, 44, "#3b4a2e"),
+  bgBldg("bg-mid-1",  1280, 1300,  64, 52, "#2e3a4a"),
+  bgBldg("bg-mid-2",  1430, 1300,  54, 46, "#4a3a2e"),
+  bgBldg("bg-mid-3",  1640, 1320,  60, 48, "#3a2e4a"),
+  bgBldg("bg-south-1",  480, 1380,  56, 44, "#2e4a3a"),
+  bgBldg("bg-south-2",  740, 1380,  66, 50, "#4a4a2e"),
+];
+
 const houses: Entity[] = [
   brickBldg("shrey-house", 1540, 1535, 92, 62, "#6d4c41", "Shrey's House"),
   brickBldg("sanjana-house", 1710, 1465, 96, 64, "#8d6e63", "Sanjana's House"),
@@ -196,6 +277,8 @@ export const richmondMap: MapData = {
     river, island, riverPark,
     ...roads,
     fancyBuilding,
+    ...corpRow,
+    ...bgBuildings,
     ...downtown,
     ...houses,
     returnTrigger,

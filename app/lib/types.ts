@@ -145,6 +145,17 @@ export interface NpcState {
   homeY: number;
 }
 
+// ── Multiplayer peer (used by renderer) ──────────────────────────────────────
+
+export interface PeerState {
+  id: string;
+  username: string;
+  /** Interpolated render position (maintained by useMultiplayer) */
+  renderX: number;
+  renderY: number;
+  renderRotation: number;
+}
+
 export interface ActiveTrigger {
   type: "zone" | "airport" | "highway" | "jukebox" | "ferry" | "graveyard";
   name: string;

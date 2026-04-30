@@ -60,7 +60,7 @@ export default function Home() {
         isFadingIn ? "opacity-100" : "opacity-0"
       }`}
     >
-      <GameCanvas />
+      <GameCanvas user={user} />
     </main>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import type { CarState, MapData, NpcState, ActiveTrigger } from "@/app/lib/types";
+import type { CarState, MapData, NpcState, ActiveTrigger, PeerState } from "@/app/lib/types";
 import { isInBoundary, findTrigger } from "@/app/lib/collision";
 import { initNpc, updateNpc } from "@/app/lib/npc";
 import { renderFrame } from "@/app/lib/renderer";
@@ -57,7 +57,8 @@ function checkSolidsPadded(car: CarState, entities: MapData["entities"], padPx: 
 export function useEngine(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   viewportRef: React.RefObject<{ w: number; h: number }>,
-  keys: React.RefObject<Set<string>>
+  keys: React.RefObject<Set<string>>,
+  peersRef?: React.RefObject<PeerState[]>
 ) {
   // ── Active map state (React-level, triggers re-render for UI) ──────
   const [activeMapId, setActiveMapId] = useState("vt-island");
@@ -265,8 +266,8 @@ export function useEngine(
     const dpr = window.devicePixelRatio || 1;
     const vp = viewportRef.current!;
 
-    renderFrame(ctx, map, car, npcsRef.current, vp, dpr, fade.alpha);
+    renderFrame(ctx, map, car, npcsRef.current, vp, dpr, fade.alpha, peersRef?.current ?? []);
   });
 
-  return { activeMapId, activeTrigger, startTransition };
+  return { activeMapId, activeTrigger, startTransition, carRef };
 }
