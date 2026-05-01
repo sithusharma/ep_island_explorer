@@ -117,7 +117,7 @@ export default function GameCanvas({ user }: Props) {
 
   // ── Game session (Supabase Realtime) ──────────────────────────────────────
 
-  const { session, isArtifact } = useGameSession();
+  const { isArtifact } = useGameSession();
 
   // ── Keyboard handlers ─────────────────────────────────────────────────────
 
@@ -171,13 +171,6 @@ export default function GameCanvas({ user }: Props) {
           <span className="text-xs font-semibold text-amber-300 tracking-widest uppercase">
             ✦ Artifact Mode — the journey lives on ✦
           </span>
-        </div>
-      )}
-
-      {/* Stage debug badge (remove in prod) */}
-      {session && !isArtifact && (
-        <div className="absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs text-white/50 backdrop-blur-sm z-10">
-          Stage {session.current_stage + 1} / 7
         </div>
       )}
 

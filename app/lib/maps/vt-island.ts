@@ -367,6 +367,33 @@ const theBurg    = bldg("the-burg",    2400, 2150,  90, 60, "#795548", "The Burg
 const wildSide   = bldg("wild-side",   2550, 2150,  95, 65, "#2e7d32", "Wild Side");
 const bww        = bldg("bww",         2700, 2150, 105, 70, "#f9a825", "Buffalo Wild Wings");
 
+const library: Entity = {
+  id: "library", x: 2050, y: 2050, layer: 3,
+  shapes: [
+    { type: "rect", x: -63, y: -47, w: 130, h: 100, color: "rgba(0,0,0,0.18)", radius: 4 },
+    { type: "rect", x: -60, y: -50, w: 124, h: 96,  color: "#37474f", radius: 4 },
+    { type: "rect", x: -63, y: -58, w: 130, h: 11,  color: "#263238", radius: 3 },
+    // Corinthian columns
+    { type: "rect", x: -44, y: -50, w: 7, h: 96, color: "rgba(255,255,255,0.14)", radius: 1 },
+    { type: "rect", x: -22, y: -50, w: 7, h: 96, color: "rgba(255,255,255,0.14)", radius: 1 },
+    { type: "rect", x:   0, y: -50, w: 7, h: 96, color: "rgba(255,255,255,0.14)", radius: 1 },
+    { type: "rect", x:  22, y: -50, w: 7, h: 96, color: "rgba(255,255,255,0.14)", radius: 1 },
+    { type: "rect", x:  44, y: -50, w: 7, h: 96, color: "rgba(255,255,255,0.14)", radius: 1 },
+    // Double front doors
+    { type: "rect", x: -13, y:  12, w: 12, h: 34, color: "#1c2831", radius: 1 },
+    { type: "rect", x:   1, y:  12, w: 12, h: 34, color: "#1c2831", radius: 1 },
+    // Windows
+    { type: "rect", x: -50, y: -32, w: 12, h: 16, color: "rgba(180,220,255,0.32)", radius: 1 },
+    { type: "rect", x: -28, y: -32, w: 12, h: 16, color: "rgba(180,220,255,0.32)", radius: 1 },
+    { type: "rect", x:  28, y: -32, w: 12, h: 16, color: "rgba(180,220,255,0.32)", radius: 1 },
+    { type: "rect", x:  50, y: -32, w: 12, h: 16, color: "rgba(180,220,255,0.32)", radius: 1 },
+  ],
+  label: { text: "Library", color: "#fff", font: "bold 14px sans-serif", offsetY: 62, shadow: { color: "rgba(0,0,0,0.9)", blur: 4 } },
+  solid: true,
+  hitbox:  { ox: -64, oy: -60, w: 128, h: 112 },
+  trigger: { type: "zone", name: "Library", hitbox: { ox: -90, oy: -80, w: 180, h: 160 } },
+};
+
 const jukebox: Entity = {
   id: "jukebox", x: 2870, y: 2050, layer: 3,
   shapes: [
@@ -478,6 +505,7 @@ const roads: Entity[] = [
   road("rd-nw",    [1350, 1350, 1120, 1120, 980, 980, 960, 720]),
   road("rd-ne",    [2250, 1350, 2250, 950,  2900, 950]),
   road("rd-bars",  [2250, 2050, 2800, 2050]),
+  road("rd-library", [2250, 2050, 2125, 2050]),
   road("rd-athletics", [2250, 2250, 2250, 2480, 2140, 2650]),
   road("rd-airport-sw", [1350, 2250, 1185, 2335, 1050, 2400]),
 ];
@@ -512,6 +540,7 @@ export const vtIsland: MapData = {
     ...roads,
     theSpot, abcStore,
     theHub, alight, collegiate, edges,
+    library,
     tots, hokieHouse, bennys,
     theBurg, wildSide, bww, jukebox,
     laneStadium, cassellColiseum, airportTerminal, ...airportTriggers,

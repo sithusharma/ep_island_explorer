@@ -424,44 +424,18 @@ function drawMinimap(ctx: CanvasRenderingContext2D, map: MapData, car: CarState,
     }
   }
 
-  // Roads (layer 2 polylines, no dashes)
-  ctx.strokeStyle = "#78909c";
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = "round";
+  // Teleport / travel points only (ferry = same-map warp, highway/airport = map exit)
   for (const e of map.entities) {
-    if (e.layer !== 2) continue;
-    for (const s of e.shapes) {
-      if (s.type === "polyline" && !s.dash && s.points) {
-        const p = s.points;
-        ctx.beginPath();
-        ctx.moveTo(mx + (e.x + p[0]) * scale, my + (e.y + p[1]) * scale);
-        for (let i = 2; i < p.length; i += 2) ctx.lineTo(mx + (e.x + p[i]) * scale, my + (e.y + p[i + 1]) * scale);
-        ctx.stroke();
-      }
-    }
-  }
-
-  // Landmark dots
-  ctx.font = "bold 6px sans-serif";
-  ctx.textAlign = "center";
-  for (const e of map.entities) {
-    if (e.layer < 3 || !e.trigger) continue;
-    ctx.fillStyle = e.trigger.type === "airport" ? "#ff9800" : e.trigger.type === "jukebox" ? "#e040fb" : e.trigger.type === "highway" ? "#42a5f5" : "#fff";
+    if (!e.trigger) continue;
+    const { type } = e.trigger;
+    if (type !== "ferry" && type !== "highway" && type !== "airport") continue;
+    ctx.fillStyle = type === "airport" ? "#ff9800" : type === "highway" ? "#42a5f5" : "#e040fb";
     ctx.beginPath();
-    ctx.arc(mx + e.x * scale, my + e.y * scale, 3, 0, Math.PI * 2);
+    ctx.arc(mx + e.x * scale, my + e.y * scale, 3.5, 0, Math.PI * 2);
     ctx.fill();
-    if (e.label) {
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.fillText(e.label.text, mx + e.x * scale, my + e.y * scale - 6);
-    }
-  }
-
-  // NPCs
-  for (const npc of npcs) {
-    ctx.fillStyle = npc.bodyColor;
-    ctx.beginPath();
-    ctx.arc(mx + npc.x * scale, my + npc.y * scale, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
   }
 
   // Car
@@ -548,7 +522,12 @@ export function renderFrame(
   buildBoundaryPath(ctx, map, ENTITY_SAFETY_BUFFER_PX);
   ctx.clip();
   for (const e of layered) {
-    if (e.layer > 0) drawEntity(ctx, e);
+    if (e.layer > 0 && e.clipToBoundary !== false) drawEntity(ctx, e);
+  }
+  ctx.restore();
+
+  for (const e of layered) {
+    if (e.layer > 0 && e.clipToBoundary === false) drawEntity(ctx, e);
   }
 
   // NPCs
@@ -559,7 +538,6 @@ export function renderFrame(
 
   // Local car (always on top)
   drawCar(ctx, car);
-  ctx.restore();
 
   // HUD (screen-space)
   ctx.setTransform(1, 0, 0, 1, 0, 0);

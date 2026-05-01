@@ -198,12 +198,21 @@ const fillers: Entity[] = [
 const returnTrigger: Entity = {
   id: "return", x: CX, y: CY + 670, layer: 5,
   shapes: [
-    { type: "rect", x: -70, y: -18, w: 140, h: 36, color: "rgba(33,150,243,0.88)", radius: 8 },
-    { type: "text", x: 0, y: 0, text: "← Back to VT", color: "#fff",
-      font: "bold 12px sans-serif",
-      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    { type: "rect", x: -4, y: -10, w: 8, h: 50, color: "#4b5563", radius: 4 },
+    { type: "rect", x: -52, y: -34, w: 104, h: 42, color: "rgba(15,23,42,0.28)", radius: 12 },
+    { type: "rect", x: -48, y: -38, w: 96, h: 38, color: "#7c3aed", radius: 12, stroke: "#c4b5fd", lineWidth: 2 },
+    { type: "circle", x: -26, y: -19, r: 11, color: "rgba(255,255,255,0.12)" },
+    { type: "text", x: -26, y: -19, text: "🏰", color: "#fff",
+      font: "16px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+      shadow: { color: "rgba(196,181,253,0.34)", blur: 8 } },
+    { type: "text", x: 8, y: -19, text: "BACK TO VT", color: "#fff",
+      font: "bold 11px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+      shadow: { color: "rgba(196,181,253,0.34)", blur: 6 } },
+    { type: "line", x1: 10, y1: -6, x2: 28, y2: -6, color: "#c4b5fd", width: 2 },
+    { type: "line", x1: 28, y1: -6, x2: 22, y2: -10, color: "#c4b5fd", width: 2 },
+    { type: "line", x1: 28, y1: -6, x2: 22, y2: -2, color: "#c4b5fd", width: 2 },
   ],
-  trigger: { type: "highway", name: "Return to VT", destination: "vt-island", hitbox: { ox: -90, oy: -45, w: 180, h: 90 } },
+  trigger: { type: "highway", name: "Return to VT", destination: "vt-island", hitbox: { ox: -72, oy: -56, w: 144, h: 120 } },
 };
 
 // ── Map export ────────────────────────────────────────────────────────────

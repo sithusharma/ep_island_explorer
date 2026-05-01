@@ -1,5 +1,5 @@
 import type { Entity, MapData } from "../types";
-const W = 2800, CX = W / 2, CY = W / 2;
+const W = 2500, CX = W / 2, CY = W / 2;
 
 function road(id: string, pts: number[]): Entity {
   const shadow = pts.map((v, i) => v + (i % 2 === 0 ? 2 : 2));
@@ -26,16 +26,52 @@ function palm(x: number, y: number): Entity {
 }
 
 function tower(id: string, x: number, y: number, w: number, h: number, color: string, label?: string): Entity {
+  const shapes = [
+    { type: "rect", x: -(w / 2) + 4, y: -(h / 2) + 4, w, h, color: "rgba(0,0,0,0.18)", radius: 4 },
+    { type: "rect", x: -(w / 2), y: -(h / 2), w, h, color, radius: 4 },
+    { type: "rect", x: -(w / 2) - 2, y: -(h / 2) - 8, w: w + 4, h: 10, color: "rgba(0,0,0,0.22)", radius: 2 },
+  ] as Entity["shapes"];
+
+  const cols = Math.max(1, Math.floor((w - 20) / 18));
+  const rows = Math.max(1, Math.floor((h - 28) / 22));
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      shapes.push({
+        type: "rect",
+        x: -(w / 2) + 9 + c * 18,
+        y: -(h / 2) + 14 + r * 22,
+        w: 9,
+        h: 12,
+        color: "rgba(210,235,255,0.38)",
+        radius: 1,
+      });
+    }
+  }
+
   return {
     id, x, y, layer: 3,
-    shapes: [
-      { type: "rect", x: -(w / 2) + 4, y: -(h / 2) + 4, w, h, color: "rgba(0,0,0,0.18)", radius: 4 },
-      { type: "rect", x: -(w / 2), y: -(h / 2), w, h, color, radius: 4 },
-      { type: "rect", x: -(w / 2) - 2, y: -(h / 2) - 8, w: w + 4, h: 10, color: "rgba(0,0,0,0.22)", radius: 2 },
-    ],
+    shapes,
     label: label ? { text: label, color: "#fff", font: "bold 13px sans-serif", offsetY: h / 2 + 16, shadow: { color: "#000", blur: 4 } } : undefined,
     solid: true,
     hitbox: { ox: -(w / 2), oy: -(h / 2), w, h },
+  };
+}
+
+function destinationSign(id: string, x: number, y: number, label: string, icon: string, destination: string): Entity {
+  return {
+    id, x, y, layer: 5,
+    shapes: [
+      { type: "rect", x: -4, y: -10, w: 8, h: 50, color: "#4b5563", radius: 4 },
+      { type: "rect", x: -52, y: -34, w: 104, h: 42, color: "rgba(15,23,42,0.28)", radius: 12 },
+      { type: "rect", x: -48, y: -38, w: 96, h: 38, color: "#1d4ed8", radius: 12, stroke: "#93c5fd", lineWidth: 2 },
+      { type: "circle", x: -26, y: -19, r: 11, color: "rgba(255,255,255,0.12)" },
+      { type: "text", x: -26, y: -19, text: icon, color: "#fff", font: "16px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline, shadow: { color: "rgba(147,197,253,0.7)", blur: 8 } },
+      { type: "text", x: 8, y: -19, text: label.toUpperCase(), color: "#fff", font: "bold 11px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline, shadow: { color: "rgba(147,197,253,0.7)", blur: 6 } },
+      { type: "line", x1: 10, y1: -6, x2: 28, y2: -6, color: "#93c5fd", width: 2 },
+      { type: "line", x1: 28, y1: -6, x2: 22, y2: -10, color: "#93c5fd", width: 2 },
+      { type: "line", x1: 28, y1: -6, x2: 22, y2: -2, color: "#93c5fd", width: 2 },
+    ],
+    trigger: { type: "highway", name: label, destination, hitbox: { ox: -72, oy: -56, w: 144, h: 120 } },
   };
 }
 
@@ -43,26 +79,28 @@ export const miamiMap: MapData = {
   id: "miami", name: "Miami", worldWidth: W, worldHeight: W,
   spawnX: CX, spawnY: CY, spawnRotation: -Math.PI / 2,
   bgColor: "#0b7dab",
-  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 1100, ry: 1100 },
+  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 980, ry: 980 },
   entities: [
     { id: "ocean", x: 0, y: 0, layer: 0, shapes: [{ type: "rect", x: 0, y: 0, w: W, h: W, color: "#0b7dab" }] },
     { id: "island", x: 0, y: 0, layer: 0, shapes: [
-      { type: "ellipse", x: CX, y: CY, rx: 1110, ry: 1110, color: "#f7e4a8" },
-      { type: "ellipse", x: CX, y: CY, rx: 1100, ry: 1100, color: "#66bb6a" },
+      { type: "ellipse", x: CX, y: CY, rx: 990, ry: 990, color: "#f7e4a8" },
+      { type: "ellipse", x: CX, y: CY, rx: 980, ry: 980, color: "#66bb6a" },
     ]},
     
-    // Massive sand-colored Beach entity running along east side
-    { id: "south-beach", x: CX + 700, y: CY, layer: 1, shapes: [
-      { type: "ellipse", x: 0, y: 0, rx: 255, ry: 720, color: "#f7e4a8" },
-      { type: "rect", x: -50, y: -200, w: 20, h: 20, color: "#e91e63", radius: 2 }, // umbrella
-      { type: "rect", x: -20, y: 150, w: 20, h: 20, color: "#00bcd4", radius: 2 }, // umbrella
-      { type: "rect", x: -80, y: 400, w: 20, h: 20, color: "#ffeb3b", radius: 2 }, // umbrella
+    // Filled beach band along the east shoreline
+    { id: "south-beach", x: 0, y: 0, layer: 1, shapes: [
+      { type: "rect", x: CX + 540, y: CY - 690, w: 410, h: 1380, color: "#f7e4a8" },
+      { type: "line", x1: CX + 540, y1: CY - 560, x2: CX + 540, y2: CY + 560, color: "rgba(255,255,255,0.28)", width: 5 },
+      { type: "rect", x: CX + 700, y: CY - 200, w: 20, h: 20, color: "#e91e63", radius: 2 },
+      { type: "rect", x: CX + 730, y: CY + 150, w: 20, h: 20, color: "#00bcd4", radius: 2 },
+      { type: "rect", x: CX + 670, y: CY + 400, w: 20, h: 20, color: "#ffeb3b", radius: 2 },
     ],
     label: { text: "South Beach", color: "#e91e63", font: "bold 20px sans-serif", offsetY: 0, shadow: { color: "rgba(255,255,255,0.8)", blur: 4 } },
+    trigger: { type: "zone", name: "South Beach", hitbox: { ox: CX + 560, oy: CY - 520, w: 240, h: 1040 } },
     },
 
     // Yacht entity floating just off the beach edge
-    { id: "yacht", x: CX + 1005, y: CY + 10, layer: 3, shapes: [
+    { id: "yacht", x: CX + 1035, y: CY + 10, layer: 4, clipToBoundary: false, shapes: [
       // Wake
       { type: "ellipse", x: 0, y: 40, rx: 30, ry: 80, color: "rgba(255,255,255,0.4)" },
       // Hull
@@ -77,7 +115,7 @@ export const miamiMap: MapData = {
     ],
     label: { text: "Luxury Yacht", color: "#fff", font: "bold 16px sans-serif", offsetY: 100, shadow: { color: "#000", blur: 4 } },
     solid: false,
-    trigger: { type: "zone", name: "Luxury Yacht", hitbox: { ox: -220, oy: -150, w: 280, h: 300 } }
+    trigger: { type: "zone", name: "Luxury Yacht", hitbox: { ox: -495, oy: -150, w: 555, h: 300 } }
     },
 
     // Airbnb building with bright blue pool shape
@@ -96,19 +134,21 @@ export const miamiMap: MapData = {
     trigger: { type: "zone", name: "Airbnb", hitbox: { ox: -70, oy: -60, w: 180, h: 100 } }
     },
 
-    // Compact downtown district behind the Airbnb
-    { id: "downtown-miami-label", x: CX - 700, y: CY - 545, layer: 4, shapes: [
-      { type: "text", x: 0, y: 0, text: "Downtown Miami", color: "#fff", font: "bold 15px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline, shadow: { color: "#000", blur: 4 } },
+    // Mainland district west of the main street
+    { id: "mainland-miami-label", x: CX - 470, y: CY - 520, layer: 4, shapes: [
+      { type: "text", x: 0, y: 0, text: "Mainland Miami", color: "#fff", font: "bold 15px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline, shadow: { color: "#000", blur: 4 } },
     ]},
-    tower("downtown-miami-1", CX - 780, CY - 430, 74, 180, "#78909c"),
-    tower("downtown-miami-2", CX - 660, CY - 470, 84, 228, "#90a4ae"),
-    tower("downtown-miami-3", CX - 545, CY - 420, 72, 168, "#607d8b"),
-    tower("downtown-miami-4", CX - 790, CY - 165, 88, 148, "#8d9ea6"),
-    tower("downtown-miami-5", CX - 655, CY - 140, 68, 132, "#b0bec5"),
-    tower("downtown-miami-6", CX - 540, CY - 175, 82, 152, "#78909c"),
+    tower("mainland-miami-1", CX - 470, CY - 430, 82, 200, "#90a4ae"),
+    tower("mainland-miami-2", CX - 620, CY - 360, 74, 158, "#78909c"),
+    tower("mainland-miami-3", CX - 470, CY - 190, 74, 156, "#8d9ea6"),
+    tower("mainland-miami-4", CX - 620, CY - 130, 78, 138, "#607d8b"),
+    tower("mainland-miami-5", CX - 470, CY + 50, 86, 168, "#78909c"),
+    tower("mainland-miami-6", CX - 620, CY + 90, 74, 138, "#b0bec5"),
+    tower("mainland-miami-7", CX - 470, CY + 260, 82, 156, "#90a4ae"),
+    tower("mainland-miami-8", CX - 620, CY + 315, 72, 132, "#78909c"),
 
     // Linear nightlife strip running parallel to the main road
-    { id: "clubs", x: CX + 260, y: CY + 70, layer: 3, shapes: [
+    { id: "clubs", x: CX + 220, y: CY + 70, layer: 3, shapes: [
       { type: "rect", x: -66, y: -180, w: 132, h: 360, color: "#2f3640", radius: 12 },
       { type: "rect", x: -48, y: -154, w: 96, h: 58, color: "#1a237e", radius: 5 },
       { type: "text", x: 0, y: -125, text: "LIV", color: "#e91e63", font: "bold 14px sans-serif", align: "center", baseline: "middle" as CanvasTextBaseline },
@@ -125,27 +165,21 @@ export const miamiMap: MapData = {
     },
 
     // Oceanview Hotel
-    { id: "hotel", x: CX - 100, y: CY + 100, layer: 3, shapes: [
+    { id: "hotel", x: CX - 150, y: CY + 100, layer: 3, shapes: [
       { type: "rect", x: -40, y: -60, w: 80, h: 120, color: "#e0f7fa", radius: 4 },
       { type: "rect", x: -44, y: -66, w: 88, h: 10, color: "#00acc1", radius: 3 },
+      { type: "rect", x: -24, y: -34, w: 14, h: 16, color: "rgba(210,235,255,0.42)", radius: 1 },
+      { type: "rect", x: 10, y: -34, w: 14, h: 16, color: "rgba(210,235,255,0.42)", radius: 1 },
+      { type: "rect", x: -24, y: -2, w: 14, h: 16, color: "rgba(210,235,255,0.42)", radius: 1 },
+      { type: "rect", x: 10, y: -2, w: 14, h: 16, color: "rgba(210,235,255,0.42)", radius: 1 },
+      { type: "rect", x: -6, y: 30, w: 12, h: 18, color: "#5d4037", radius: 1 },
     ],
-    label: { text: "Oceanview Hotel", color: "#fff", font: "bold 13px sans-serif", offsetY: 75, shadow: { color: "rgba(0,0,0,0.6)", blur: 3 } },
     solid: true, hitbox: { ox: -46, oy: -68, w: 92, h: 138 },
     trigger: { type: "zone", name: "Oceanview Hotel", hitbox: { ox: -70, oy: -90, w: 140, h: 180 } },
     },
 
-    // West-side urban backdrop opposite the beach
-    { id: "city-backdrop", x: 0, y: 0, layer: 1, shapes: [
-      { type: "rect", x: 840, y: 350, w: 90, h: 220, color: "#78909c", radius: 3 },
-      { type: "rect", x: 952, y: 300, w: 72, h: 270, color: "#90a4ae", radius: 3 },
-      { type: "rect", x: 1040, y: 390, w: 84, h: 180, color: "#607d8b", radius: 3 },
-      { type: "rect", x: 860, y: 610, w: 60, h: 12, color: "#546e7a" },
-      { type: "rect", x: 972, y: 610, w: 48, h: 12, color: "#546e7a" },
-      { type: "rect", x: 1060, y: 610, w: 56, h: 12, color: "#546e7a" },
-    ]},
-
     // Airport terminal
-    { id: "miami-airport", x: CX - 420, y: CY + 690, layer: 3, shapes: [
+    { id: "miami-airport", x: CX - 360, y: CY + 630, layer: 3, shapes: [
       { type: "rect", x: -92, y: -28, w: 184, h: 56, color: "#607d8b", radius: 8 },
       { type: "rect", x: -78, y: -18, w: 156, h: 32, color: "#90a4ae", radius: 6 },
       { type: "rect", x: -18, y: -56, w: 36, h: 28, color: "#546e7a", radius: 4 },
@@ -158,59 +192,25 @@ export const miamiMap: MapData = {
     },
 
     // Roads
-    road("rd-main", [CX, CY - 1000, CX, CY + 300, CX + 400, CY + 300]),
-    road("rd-clubs", [CX + 120, CY + 70, CX + 200, CY + 70]),
+    road("rd-main", [CX, CY - 820, CX, CY + 820]),
+    road("rd-clubs", [CX, CY + 70, CX + 160, CY + 70]),
     road("rd-airbnb", [CX, CY - 250, CX - 200, CY - 250]),
-    road("rd-downtown-entry", [CX - 200, CY - 250, CX - 470, CY - 250, CX - 470, CY - 350]),
-    road("rd-downtown-west", [CX - 880, CY - 350, CX - 480, CY - 350]),
-    road("rd-downtown-south", [CX - 850, CY - 70, CX - 490, CY - 70]),
-    road("rd-downtown-link", [CX - 700, CY - 520, CX - 700, CY - 110]),
-    road("rd-airport", [CX, CY + 620, CX - 320, CY + 620]),
-    road("rd-south", [CX, CY + 300, CX, CY + 900]),
-
-    // Decorative palms along the road corridor
-    palm(CX - 110, CY - 860),
-    palm(CX + 108, CY - 780),
-    palm(CX - 112, CY - 670),
-    palm(CX + 112, CY - 560),
-    palm(CX - 110, CY - 450),
-    palm(CX + 110, CY - 340),
-    palm(CX - 110, CY - 220),
-    palm(CX + 112, CY - 90),
-    palm(CX - 108, CY + 40),
-    palm(CX + 112, CY + 170),
-    palm(CX - 110, CY + 300),
-    palm(CX + 112, CY + 430),
-    palm(CX - 108, CY + 560),
-    palm(CX + 110, CY + 700),
-    palm(CX - 110, CY + 840),
-    palm(CX + 260, CY + 298),
-    palm(CX + 362, CY + 302),
-    palm(CX - 220, CY - 248),
-    palm(CX - 120, CY - 250),
-    palm(CX - 12, CY + 302),
-    palm(CX + 520, CY - 540),
-    palm(CX + 560, CY - 320),
-    palm(CX + 600, CY - 80),
-    palm(CX + 608, CY + 180),
-    { id: "beach-props", x: CX + 690, y: CY + 40, layer: 2, shapes: [
-      { type: "rect", x: -64, y: -320, w: 26, h: 10, color: "#ffffff", radius: 3 },
-      { type: "rect", x: -60, y: -336, w: 18, h: 18, color: "#ff7043", radius: 3 },
-      { type: "rect", x: 22, y: -160, w: 26, h: 10, color: "#ffffff", radius: 3 },
-      { type: "rect", x: 26, y: -176, w: 18, h: 18, color: "#42a5f5", radius: 3 },
-      { type: "rect", x: -42, y: 92, w: 30, h: 10, color: "#ffffff", radius: 3 },
-      { type: "rect", x: -38, y: 76, w: 18, h: 18, color: "#ab47bc", radius: 3 },
-      { type: "rect", x: 48, y: 280, w: 28, h: 10, color: "#ffffff", radius: 3 },
-      { type: "rect", x: 54, y: 264, w: 18, h: 18, color: "#ffca28", radius: 3 },
+    road("rd-mainland-north", [CX, CY - 360, CX - 380, CY - 360]),
+    road("rd-mainland-mid", [CX, CY - 90, CX - 380, CY - 90]),
+    road("rd-mainland-south", [CX, CY + 170, CX - 380, CY + 170]),
+    road("rd-mainland-lower", [CX, CY + 410, CX - 380, CY + 410]),
+    road("rd-airport", [CX, CY + 560, CX - 280, CY + 560]),
+    { id: "beach-props", x: 0, y: 0, layer: 2, shapes: [
+      { type: "rect", x: CX + 540, y: CY - 280, w: 26, h: 10, color: "#ffffff", radius: 3 },
+      { type: "rect", x: CX + 544, y: CY - 296, w: 18, h: 18, color: "#ff7043", radius: 3 },
+      { type: "rect", x: CX + 610, y: CY + 20, w: 26, h: 10, color: "#ffffff", radius: 3 },
+      { type: "rect", x: CX + 614, y: CY + 4, w: 18, h: 18, color: "#42a5f5", radius: 3 },
+      { type: "rect", x: CX + 560, y: CY + 300, w: 28, h: 10, color: "#ffffff", radius: 3 },
+      { type: "rect", x: CX + 566, y: CY + 284, w: 18, h: 18, color: "#ffca28", radius: 3 },
     ]},
 
     // Highway to Orlando
-    { id: "hwy-orlando", x: CX, y: CY - 950, layer: 5, shapes: [
-      { type: "rect", x: -82, y: -20, w: 164, h: 40, color: "rgba(33,150,243,0.88)", radius: 10 },
-      { type: "text", x: 0, y: 0, text: "🎢 Orlando", color: "#fff", font: "bold 12px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
-    ],
-    trigger: { type: "highway", name: "Orlando", destination: "orlando", hitbox: { ox: -96, oy: -44, w: 192, h: 88 } },
-    },
+    destinationSign("hwy-orlando", CX, CY - 840, "Orlando", "🎢", "orlando"),
   ],
   items: [], npcs: [],
 };

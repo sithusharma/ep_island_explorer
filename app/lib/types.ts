@@ -73,6 +73,7 @@ export interface Entity {
   y: number;
   layer: number;
   shapes: Shape[];
+  clipToBoundary?: boolean;
   solid?: boolean;
   hitbox?: Hitbox;
   trigger?: Trigger;

@@ -162,7 +162,6 @@ const treeShapes: Shape[] = [
   // Main island — spread to the perimeter so landmarks stay clear
   ...tree(1600 + MAIN_DX, 2040 + MAIN_DY, 16),
   ...tree(2040 + MAIN_DX, 2020 + MAIN_DY, 17),
-  ...tree(2520 + MAIN_DX, 2140 + MAIN_DY, 14),
   ...tree(1200 + MAIN_DX, 2800 + MAIN_DY, 12),
   ...tree(2580 + MAIN_DX, 2740 + MAIN_DY, 12),
   ...tree(1420 + MAIN_DX, 3320 + MAIN_DY, 12),
@@ -191,14 +190,14 @@ const roads: Entity[] = [
   road("rd-nightlife",  [1480 + MAIN_DX, 2400 + MAIN_DY, 1480 + MAIN_DX, 2460 + MAIN_DY]),
   // Airbnb spur south
   road("rd-airbnb",     [1700 + MAIN_DX, 2400 + MAIN_DY, 1700 + MAIN_DX, 2505 + MAIN_DY]),
-  // Mountain road — Zipline forest
-  road("rd-forest-z",   [1700 + MAIN_DX, 2400 + MAIN_DY, 1650 + MAIN_DX, 2280 + MAIN_DY, 1650 + MAIN_DX, 2230 + MAIN_DY]),
+  // Mountain road — Zipline & Mountain
+  road("rd-forest-z",   [1700 + MAIN_DX, 2400 + MAIN_DY, 1730 + MAIN_DX, 2280 + MAIN_DY, 1820 + MAIN_DX, 2200 + MAIN_DY]),
   // Airport spur south-east
   road("rd-airport",    [2500 + MAIN_DX, 2400 + MAIN_DY, 2420 + MAIN_DX, 2550 + MAIN_DY]),
-  // Culebra ferry spur north-east
-  road("rd-culebra",    [2200 + MAIN_DX, 2400 + MAIN_DY, 2520 + MAIN_DX, 2080 + MAIN_DY, 2820 + MAIN_DX, 1980 + MAIN_DY]),
-  // Vieques ferry spur east end
-  road("rd-vieques",    [3140 + MAIN_DX, 2400 + MAIN_DY, 3140 + MAIN_DX, 2580 + MAIN_DY]),
+  // Culebra ferry spur north-east (dock now at 2860, 2340)
+  road("rd-culebra",    [2200 + MAIN_DX, 2400 + MAIN_DY, 2360 + MAIN_DX, 2100 + MAIN_DY, 2560 + MAIN_DX, 1940 + MAIN_DY]),
+  // Vieques ferry spur east end (dock now at 3150, 2880)
+  road("rd-vieques",    [2850 + MAIN_DX, 2400 + MAIN_DY, 2850 + MAIN_DX, 2480 + MAIN_DY]),
 ];
 
 // Vieques internal road
@@ -248,7 +247,7 @@ const oldSanJuan: Entity = {
 // Three dark club buildings with neon signs — south of the main highway
 
 const nightlifeDistrict: Entity = {
-  id: "nightlife", x: 1740 + MAIN_DX, y: 2650 + MAIN_DY, layer: 3,
+  id: "nightlife", x: 1480 + MAIN_DX, y: 2520 + MAIN_DY, layer: 3,
   shapes: [
     // ── Club 1 (dark purple) ──────────────────────────────────────
     { type: "rect", x: -86, y: -40, w: 54, h: 62, color: "rgba(0,0,0,0.22)", radius: 3 },
@@ -273,7 +272,7 @@ const nightlifeDistrict: Entity = {
     { type: "rect", x:  50, y: -18, w: 12, h: 15, color: "rgba(255,120,0,0.30)", radius: 1 },
     { type: "rect", x:  68, y: -18, w: 12, h: 15, color: "rgba(255,210,0,0.30)", radius: 1 },
   ],
-  label: { text: "Nightlife District", color: "#ff69b4", font: "bold 13px sans-serif", offsetY: 54, shadow: { color: "rgba(0,0,0,0.9)", blur: 5 } },
+  label: { text: "Nightlife District", color: "#d6d3d4", font: "bold 13px sans-serif", offsetY: 54, shadow: { color: "rgba(0,0,0,0.9)", blur: 5 } },
   solid: true,
   hitbox:  { ox: -88, oy: -59, w: 236, h: 130 },
   trigger: { type: "zone", name: "Nightlife District", hitbox: { ox: -116, oy: -85, w: 290, h: 186 } },
@@ -283,7 +282,7 @@ const nightlifeDistrict: Entity = {
 // Cream colonial house with terracotta roof and a pool — zone photo trigger
 
 const airbnb: Entity = {
-  id: "airbnb-pr", x: 2140 + MAIN_DX, y: 2820 + MAIN_DY, layer: 3,
+  id: "airbnb-pr", x: 1700 + MAIN_DX, y: 2560 + MAIN_DY, layer: 3,
   shapes: [
     // Shadow
     { type: "rect", x: -34, y: -24, w: 70, h: 66, color: "rgba(0,0,0,0.20)", radius: 4 },
@@ -345,12 +344,83 @@ const sjuTrigger: Entity = {
   trigger: { type: "airport", name: "SJU Airport", destination: "vt-island", hitbox: { ox: -80, oy: -35, w: 160, h: 70 } },
 };
 
+// ── Restaurant Row — end of rd-airport spur ────────────────────────────────
+// Five vibrant Caribbean restaurants; entity origin sits exactly at road end.
+// Layout: 3 buildings (row A, y=-52→0) + patio gap + 2 buildings (row B, y=10→62)
+// Footprints (entity-relative, no overlap):
+//   A1 x[-90,-42]  A2 x[-32,+16]  A3 x[+26,+74]
+//   B1 x[-61,-13]  B2 x[+3,+51]
+
+const restaurantRow: Entity = {
+  id: "restaurant-row", x: 2420 + MAIN_DX, y: 2550 + MAIN_DY, layer: 3,
+  shapes: [
+    // ── Row A ─────────────────────────────────────────────────────────────
+    // A1: "La Paloma" — hot pink
+    { type: "rect", x: -86, y: -48, w: 48, h: 52, color: "rgba(0,0,0,0.20)", radius: 3 },
+    { type: "rect", x: -90, y: -52, w: 48, h: 52, color: "#e91e63", radius: 3 },
+    { type: "rect", x: -90, y: -62, w: 48, h: 13, color: "#880e4f", radius: 2 },
+    { type: "rect", x: -82, y: -40, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x: -63, y: -40, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x: -71, y: -20, w: 12, h: 20, color: "#560027" },
+    { type: "text", x: -66, y: -58, text: "La Paloma", color: "#fce4ec", font: "bold 7px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    // A2: "El Mar" — cyan/teal
+    { type: "rect", x: -28, y: -48, w: 48, h: 52, color: "rgba(0,0,0,0.20)", radius: 3 },
+    { type: "rect", x: -32, y: -52, w: 48, h: 52, color: "#00bcd4", radius: 3 },
+    { type: "rect", x: -32, y: -62, w: 48, h: 13, color: "#00838f", radius: 2 },
+    { type: "rect", x: -24, y: -40, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x:  -5, y: -40, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x: -13, y: -20, w: 12, h: 20, color: "#006064" },
+    { type: "text", x:  -8, y: -58, text: "El Mar", color: "#e0f7fa", font: "bold 7px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    // A3: "Pinchos" — lime green
+    { type: "rect", x:  30, y: -48, w: 48, h: 52, color: "rgba(0,0,0,0.20)", radius: 3 },
+    { type: "rect", x:  26, y: -52, w: 48, h: 52, color: "#8bc34a", radius: 3 },
+    { type: "rect", x:  26, y: -62, w: 48, h: 13, color: "#33691e", radius: 2 },
+    { type: "rect", x:  34, y: -40, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x:  53, y: -40, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x:  45, y: -20, w: 12, h: 20, color: "#1b5e20" },
+    { type: "text", x:  50, y: -58, text: "Pinchos", color: "#f1f8e9", font: "bold 7px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    // ── Patio / sidewalk between rows ────────────────────────────────────
+    { type: "rect", x: -92, y:  -2, w: 188, h: 14, color: "#d7ccc8", radius: 2 },
+    { type: "circle", x: -50, y:  5, r: 5, color: "#795548" },
+    { type: "circle", x:  0,  y:  5, r: 5, color: "#795548" },
+    { type: "circle", x:  50, y:  5, r: 5, color: "#795548" },
+    // ── Row B ─────────────────────────────────────────────────────────────
+    // B1: "Mofongo" — deep orange
+    { type: "rect", x: -57, y:  14, w: 48, h: 52, color: "rgba(0,0,0,0.20)", radius: 3 },
+    { type: "rect", x: -61, y:  10, w: 48, h: 52, color: "#ff6f00", radius: 3 },
+    { type: "rect", x: -61, y:   0, w: 48, h: 13, color: "#bf360c", radius: 2 },
+    { type: "rect", x: -53, y:  22, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x: -34, y:  22, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x: -43, y:  42, w: 12, h: 20, color: "#7f0000" },
+    { type: "text", x: -37, y:   6, text: "Mofongo", color: "#fff8e1", font: "bold 7px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    // B2: "La Isla" — vivid purple
+    { type: "rect", x:   7, y:  14, w: 48, h: 52, color: "rgba(0,0,0,0.20)", radius: 3 },
+    { type: "rect", x:   3, y:  10, w: 48, h: 52, color: "#ab47bc", radius: 3 },
+    { type: "rect", x:   3, y:   0, w: 48, h: 13, color: "#4a148c", radius: 2 },
+    { type: "rect", x:  11, y:  22, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x:  30, y:  22, w: 13, h: 11, color: "rgba(255,255,255,0.60)", radius: 1 },
+    { type: "rect", x:  21, y:  42, w: 12, h: 20, color: "#1a0033" },
+    { type: "text", x:  27, y:   6, text: "La Isla", color: "#f3e5f5", font: "bold 7px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+  ],
+  label: { text: "Restaurants", color: "#fff", font: "bold 14px sans-serif", offsetY: 84, shadow: { color: "rgba(0,0,0,0.9)", blur: 5 } },
+  solid: true,
+  hitbox:  { ox: -92, oy: -64, w: 188, h: 136 },
+  trigger: { type: "zone", name: "Restaurant Row", hitbox: { ox: -108, oy: -80, w: 216, h: 168 } },
+};
+
 // ── Zipline Forest ─────────────────────────────────────────────────────────
 // Western mountain forest with a wire + platforms — zone trigger
 
 const ziplineForest: Entity = {
-  id: "zipline-forest", x: 1740 + MAIN_DX, y: 2140 + MAIN_DY, layer: 2,
+  id: "zipline-forest", x: 1820 + MAIN_DX, y: 2140 + MAIN_DY, layer: 2,
   shapes: [
+    // Mountain behind the zipline (drawn first so it sits behind everything)
+    { type: "triangle", x1: -130, y1:  38, x2: -48, y2: -110, x3:  34, y3:  38, color: "#37474f" },
+    { type: "triangle", x1:  -88, y1:  38, x2: -14, y2:  -82, x3:  62, y3:  38, color: "#455a64" },
+    { type: "triangle", x1:  -52, y1:  38, x2:   0, y2:  -56, x3:  52, y3:  38, color: "#546e7a" },
+    // Snow cap
+    { type: "ellipse", x: -12, y: -88, rx: 22, ry: 12, color: "rgba(255,255,255,0.80)" },
+    { type: "ellipse", x:   2, y: -70, rx: 16, ry:  8, color: "rgba(255,255,255,0.55)" },
     // Forest floor
     { type: "ellipse", x: 0,   y: 12, rx:  92, ry: 56, color: "#1b5e20" },
     { type: "ellipse", x: -30, y:  2, rx:  56, ry: 42, color: "#2e7d32" },
@@ -368,37 +438,15 @@ const ziplineForest: Entity = {
     { type: "rect", x:  76, y: 28, w: 16, h: 18, color: "#5d4037", radius: 2 },
     { type: "rect", x:  78, y: 24, w: 12, h:  6, color: "#4e342e", radius: 1 },
   ],
-  label: { text: "Zipline Forest", color: "#a5d6a7", font: "bold 13px sans-serif", offsetY: 66, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
+  label: { text: "Zipline & Mountain", color: "#a5d6a7", font: "bold 13px sans-serif", offsetY: 66, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
   solid: false,
-  trigger: { type: "zone", name: "Zipline Forest", hitbox: { ox: -106, oy: -76, w: 212, h: 152 } },
-};
-
-// ── El Yunque — mountain landmark ─────────────────────────────────────────
-
-const elYunque: Entity = {
-  id: "el-yunque", x: 2520 + MAIN_DX, y: 2220 + MAIN_DY, layer: 2,
-  shapes: [
-    { type: "ellipse",  x:   0, y: 16, rx: 155, ry: 78,  color: "#1b5e20" },
-    { type: "triangle", x1: -95, y1: 32, x2: -8, y2: -68, x3: 78, y3: 32, color: "#2e7d32" },
-    { type: "triangle", x1: -55, y1: 32, x2: 32, y2: -92, x3: 108, y3: 32, color: "#388e3c" },
-    { type: "triangle", x1: -18, y1: 32, x2: 22, y2: -108, x3: 60, y3: 32, color: "#43a047" },
-    { type: "ellipse",  x: 22, y: -92, rx: 18, ry: 10, color: "rgba(255,255,255,0.35)" },
-    { type: "ellipse",  x: -4, y: -66, rx: 14, ry:  8, color: "rgba(255,255,255,0.25)" },
-    // Small waterfall on the left mountain face
-    { type: "rect",    x: -38, y: -46, w: 4, h: 8, color: "#29b6f6", radius: 1 },   // tiny waterfall
-
-    { type: "ellipse", x: -35, y:  4,  rx: 14, ry:  6, color: "rgba(41,182,246,0.40)" }, // mist pool
-    { type: "ellipse", x: -35, y:  2,  rx:  7, ry:  3, color: "rgba(129,212,250,0.55)" },
-  ],
-  label: { text: "El Yunque", color: "#a5d6a7", font: "bold 13px sans-serif", offsetY: 74, shadow: { color: "rgba(0,0,0,0.8)", blur: 4 } },
-  solid: false,
-  trigger: { type: "zone", name: "El Yunque", hitbox: { ox: -170, oy: -128, w: 340, h: 236 } },
+  trigger: { type: "zone", name: "Zipline & Mountain", hitbox: { ox: -140, oy: -120, w: 280, h: 196 } },
 };
 
 // ── Ferry docks on main island ─────────────────────────────────────────────
 
-const mainToVieques = ferryDock("dock-main-v", 3440, 2980, "Vieques",      4530, 3185);
-const mainToCulebra = ferryDock("dock-main-c", 3120, 2380, "Culebra",      4405, 1900);
+const mainToVieques = ferryDock("dock-main-v", 3150, 2880, "Vieques",      4530, 3185);
+const mainToCulebra = ferryDock("dock-main-c", 2860, 2340, "Culebra",      4405, 1900);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VIEQUES
@@ -444,7 +492,7 @@ const mosquitoBay: Entity = {
   trigger: { type: "zone", name: "Mosquito Bay", hitbox: { ox: -70, oy: -56, w: 140, h: 112 } },
 };
 
-const viequesToMain = ferryDock("dock-vieques", 4530, 3185, "Puerto Rico", 3440, 2980);
+const viequesToMain = ferryDock("dock-vieques", 4530, 3185, "Puerto Rico", 3150, 2880);
 
 // Vieques vehicles — golf carts + jeeps scattered around the island
 const viequesVehicles: Entity[] = [
@@ -480,7 +528,7 @@ const flamencoBeach: Entity = {
   trigger: { type: "zone", name: "Flamenco Beach", hitbox: { ox: -92, oy: -54, w: 184, h: 116 } },
 };
 
-const culebraToMain = ferryDock("dock-culebra", 4405, 1900, "Puerto Rico", 3120, 2380);
+const culebraToMain = ferryDock("dock-culebra", 4405, 1900, "Puerto Rico", 2860, 2340);
 
 // Culebra vehicles — golf carts + jeeps
 const culebraVehicles: Entity[] = [
@@ -520,8 +568,8 @@ export const puertoRicoMap: MapData = {
     nightlifeDistrict,
     airbnb,
     sjuAirport, sjuTrigger,
+    restaurantRow,
     ziplineForest,
-    elYunque,
     mainToVieques, mainToCulebra,
     // Vieques
     sunBay, mosquitoBay,

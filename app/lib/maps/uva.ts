@@ -111,9 +111,9 @@ const ocean: Entity = {
 const island: Entity = {
   id: "island", x: 0, y: 0, layer: 0,
   shapes: [
-    { type: "ellipse", x: CX, y: CY, rx: 692, ry: 652, color: "#d9c49a" },   // Sandy shore
-    { type: "ellipse", x: CX, y: CY, rx: 680, ry: 640, color: "#5a8c5e" },   // Campus green
-    { type: "ellipse", x: CX, y: CY, rx: 420, ry: 395, color: "#4e8052", alpha: 0.35 }, // Inner quad tint
+    { type: "ellipse", x: CX, y: CY, rx: 812, ry: 772, color: "#d9c49a" },   // Sandy shore
+    { type: "ellipse", x: CX, y: CY, rx: 800, ry: 760, color: "#5a8c5e" },   // Campus green
+    { type: "ellipse", x: CX, y: CY, rx: 494, ry: 465, color: "#4e8052", alpha: 0.35 }, // Inner quad tint
   ],
 };
 
@@ -126,6 +126,7 @@ const roads: Entity[] = [
   road("lawn-e",   [945, 520, 945, 900]),    // East Range path
   road("downtown-st", [1145, 655, 1435, 655]), // Downtown food + nightlife
   road("apartment-loop", [412, 670, 520, 584, 650, 622, 706, 756]), // Apartment loop
+  road("airbnb-lane", [900, 1350, 656, 1350]),                      // Spur to the AirBnB
 ];
 
 // ── Carter Mountain ───────────────────────────────────────────────────────
@@ -278,17 +279,66 @@ const jpjArena: Entity = {
   trigger: { type: "zone", name: "JPJ Arena", hitbox: { ox: -88, oy: -68, w: 176, h: 136 } },
 };
 
+// ── Scary Smelly Shitty AirBnB ────────────────────────────────────────────
+// Focal point for Riya's token quest — large, dilapidated off-white house
+
+const scaryAirbnb: Entity = {
+  id: "scary-airbnb", x: 640, y: 1350, layer: 3,
+  shapes: [
+    { type: "rect", x: -58, y: -52, w: 120, h: 108, color: "rgba(0,0,0,0.28)", radius: 5 },
+    // Main body — large, yellowed off-white
+    { type: "rect", x: -55, y: -55, w: 114, h: 104, color: "#f0ead6", radius: 4 },
+    // Dingy roof band
+    { type: "rect", x: -57, y: -63, w: 118, h: 12,  color: "#b8a882", radius: 3 },
+    // Attic window
+    { type: "rect", x: -12, y: -56, w: 24, h: 16,   color: "rgba(80,100,110,0.30)", radius: 2 },
+    // Peeling horizontal trim (stained)
+    { type: "rect", x: -57, y: -10, w: 118, h: 4,   color: "#9e8e68", radius: 1 },
+    { type: "rect", x: -57, y:  20, w: 118, h: 4,   color: "#9e8e68", radius: 1 },
+    // Left windows — cloudy glass
+    { type: "rect", x: -44, y: -36, w: 16, h: 18, color: "rgba(90,110,120,0.28)", radius: 1 },
+    { type: "rect", x: -44, y:   2, w: 16, h: 18, color: "rgba(90,110,120,0.28)", radius: 1 },
+    // Right windows
+    { type: "rect", x:  28, y: -36, w: 16, h: 18, color: "rgba(90,110,120,0.28)", radius: 1 },
+    { type: "rect", x:  28, y:   2, w: 16, h: 18, color: "rgba(90,110,120,0.28)", radius: 1 },
+    // Off-centre front door — slightly crooked feel
+    { type: "rect", x:  -9, y:  28, w: 22, h: 21, color: "#6b4c2a", radius: 1 },
+    // Porch step
+    { type: "rect", x: -16, y:  48, w: 36, h: 6,  color: "#cdbf9a", radius: 1 },
+    // Overgrown bush — adds to neglected look
+    { type: "circle", x: -50, y: 46, r: 10, color: "#3a6b3e" },
+    { type: "circle", x:  50, y: 44, r:  8, color: "#2e5c32" },
+  ],
+  label: {
+    text: "Scary Smelly Shitty AirBnB", color: "#ffcc80",
+    font: "bold 11px sans-serif", offsetY: 70,
+    shadow: { color: "rgba(0,0,0,0.95)", blur: 5 },
+  },
+  solid: true,
+  hitbox:  { ox: -59, oy: -65, w: 118, h: 122 },
+  trigger: { type: "zone", name: "Scary Smelly Shitty AirBnB", hitbox: { ox: -82, oy: -80, w: 164, h: 158 } },
+};
+
 // ── Return trigger ─────────────────────────────────────────────────────────
 
 const returnTrigger: Entity = {
   id: "return", x: CX, y: CY + 462, layer: 5,
   shapes: [
-    { type: "rect", x: -70, y: -18, w: 140, h: 36, color: "rgba(33,150,243,0.88)", radius: 8 },
-    { type: "text", x: 0, y: 0, text: "← Back to VT", color: "#fff",
-      font: "bold 12px sans-serif",
-      align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    { type: "rect", x: -4, y: -10, w: 8, h: 50, color: "#4b5563", radius: 4 },
+    { type: "rect", x: -52, y: -34, w: 104, h: 42, color: "rgba(15,23,42,0.28)", radius: 12 },
+    { type: "rect", x: -48, y: -38, w: 96, h: 38, color: "#7c3aed", radius: 12, stroke: "#c4b5fd", lineWidth: 2 },
+    { type: "circle", x: -26, y: -19, r: 11, color: "rgba(255,255,255,0.12)" },
+    { type: "text", x: -26, y: -19, text: "🏰", color: "#fff",
+      font: "16px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+      shadow: { color: "rgba(196,181,253,0.34)", blur: 8 } },
+    { type: "text", x: 8, y: -19, text: "BACK TO VT", color: "#fff",
+      font: "bold 11px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline,
+      shadow: { color: "rgba(196,181,253,0.34)", blur: 6 } },
+    { type: "line", x1: 10, y1: -6, x2: 28, y2: -6, color: "#c4b5fd", width: 2 },
+    { type: "line", x1: 28, y1: -6, x2: 22, y2: -10, color: "#c4b5fd", width: 2 },
+    { type: "line", x1: 28, y1: -6, x2: 22, y2: -2, color: "#c4b5fd", width: 2 },
   ],
-  trigger: { type: "highway", name: "Return to VT", destination: "vt-island", hitbox: { ox: -90, oy: -45, w: 180, h: 90 } },
+  trigger: { type: "highway", name: "Return to VT", destination: "vt-island", hitbox: { ox: -72, oy: -56, w: 144, h: 120 } },
 };
 
 // ── Map export ────────────────────────────────────────────────────────────
@@ -299,7 +349,7 @@ export const uvaMap: MapData = {
   spawnX: CX, spawnY: CY + 180,
   spawnRotation: -Math.PI / 2,
   bgColor: "#0e4a7a",
-  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 680, ry: 640 },
+  boundary: { type: "ellipse", cx: CX, cy: CY, rx: 800, ry: 760 },
   entities: [
     ocean, island,
     carterMountain,
@@ -311,6 +361,7 @@ export const uvaMap: MapData = {
     ...downtownStreet,
     aldermanLibrary,
     jpjArena,
+    scaryAirbnb,
     returnTrigger,
   ],
   items: [], npcs: [],
