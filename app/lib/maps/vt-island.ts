@@ -551,6 +551,6 @@ export const vtIsland: MapData = {
   ],
   items: [],
   npcs: [
-    { id: "milo", name: "Milo", spawnX: CX, spawnY: CY, speed: 40, wanderRadius: 300, spriteSrc: "/images/milo.png", bodyColor: "#1a1a1a", accentColor: "#ffffff" },
+    { id: "milo", name: "Milo", spawnX: CX, spawnY: CY - 95, speed: 0, wanderRadius: 0, spriteSrc: "/images/milo.png", spriteScale: 1.28, bodyColor: "#1a1a1a", accentColor: "#ffffff" },
   ],
 };

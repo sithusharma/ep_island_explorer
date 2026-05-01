@@ -2,7 +2,7 @@
 // Data-driven canvas renderer — draws any MapData + car + NPCs + HUD
 // ---------------------------------------------------------------------------
 
-import type { Shape, Entity, MapData, CarState, NpcState, PeerState } from "./types";
+import type { Shape, Entity, MapData, CarState, NpcState, PeerState, Artifact } from "./types";
 
 const CAR_L = 38;
 const CAR_W = 22;
@@ -177,6 +177,41 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: Entity) {
   ctx.restore();
 }
 
+function drawArtifact(ctx: CanvasRenderingContext2D, artifact: Artifact) {
+  const { x, y } = artifact.mapCoordinates;
+  const icon = artifact.icon ?? "✨";
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(2, 18, 18, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255,244,214,0.9)";
+  ctx.beginPath();
+  ctx.arc(0, 0, 20, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = "#111";
+  ctx.font = "26px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(icon, 0, 1);
+
+  ctx.fillStyle = "#111";
+  ctx.font = "bold 11px sans-serif";
+  ctx.textBaseline = "top";
+  ctx.fillText(artifact.name, 0, 28);
+
+  ctx.restore();
+}
+
 function buildBoundaryPath(ctx: CanvasRenderingContext2D, map: MapData, insetPx = 0) {
   ctx.beginPath();
   if (map.boundary.type === "ellipse") {
@@ -296,8 +331,10 @@ function drawNpc(ctx: CanvasRenderingContext2D, npc: NpcState) {
   if (npc.spriteSrc) {
     const img = getImage(npc.spriteSrc);
     if (img.complete && img.naturalWidth > 0) {
+      const scale = npc.spriteScale ?? 1;
+      const size = 48 * scale;
       ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(img, -24, -34, 48, 48);
+      ctx.drawImage(img, -size / 2, -size * 0.71, size, size);
       ctx.restore();
       return;
     }
@@ -495,6 +532,7 @@ export function renderFrame(
   map: MapData,
   car: CarState,
   npcs: NpcState[],
+  visibleArtifacts: Artifact[],
   viewport: { w: number; h: number },
   dpr: number,
   fadeAlpha: number,
@@ -524,6 +562,7 @@ export function renderFrame(
   for (const e of layered) {
     if (e.layer > 0 && e.clipToBoundary !== false) drawEntity(ctx, e);
   }
+  for (const artifact of visibleArtifacts) drawArtifact(ctx, artifact);
   ctx.restore();
 
   for (const e of layered) {

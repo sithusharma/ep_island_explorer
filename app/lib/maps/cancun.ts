@@ -158,6 +158,18 @@ export const cancunMap: MapData = {
 
     trees,
   ],
+  artifacts: [
+    {
+      id: "wheelchair",
+      name: "Wheelchair",
+      mapCoordinates: { x: CX + 560, y: CY + 160 },
+      requiredPlayer: "Jake",
+      stageRequired: 1,
+      icon: "♿",
+      description: "Jake's wheelchair — bring it to the RIU Resort.",
+      hitbox: { w: 54, h: 54 },
+    },
+  ],
   items: [],
   npcs: [],
 };

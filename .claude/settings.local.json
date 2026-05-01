@@ -5,7 +5,8 @@
       "Bash(npm run:*)",
       "Bash(node_modules/.bin/tsc --noEmit --skipLibCheck)",
       "Bash(npx tsc *)",
-      "Bash(./node_modules/.bin/tsc --noEmit)"
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

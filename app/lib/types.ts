@@ -89,6 +89,7 @@ export interface NpcDef {
   wanderRadius: number;
   /** Optional sprite path under /public (ex: "/images/milo.png") */
   spriteSrc?: string;
+  spriteScale?: number;
   bodyColor: string;
   accentColor: string;
 }
@@ -98,6 +99,22 @@ export interface MapItem {
   type: string;
   x: number;
   y: number;
+}
+
+export interface Artifact {
+  id: string;
+  name: string;
+  mapCoordinates: { x: number; y: number };
+  requiredPlayer: string;
+  stage?: number;
+  stageRequired?: number;
+  requiredArtifacts?: string[];
+  unlockToken?: string;
+  advanceStageTo?: number;
+  icon?: string;
+  description?: string;
+  hitbox?: { w: number; h: number };
+  enlargedIcon?: string;
 }
 
 export type Boundary =
@@ -115,6 +132,7 @@ export interface MapData {
   bgColor: string;
   boundary: Boundary;
   entities: Entity[];
+  artifacts?: Artifact[];
   items: MapItem[];
   npcs: NpcDef[];
 }
@@ -138,6 +156,7 @@ export interface NpcState {
   speed: number;
   wanderRadius: number;
   spriteSrc?: string;
+  spriteScale?: number;
   bodyColor: string;
   accentColor: string;
   state: "walking" | "idle";

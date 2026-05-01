@@ -88,5 +88,19 @@ export const orlandoMap: MapData = {
     trigger: { type: "highway", name: "Miami", destination: "miami", hitbox: { ox: -72, oy: -56, w: 144, h: 120 } },
     },
   ],
+  artifacts: [
+    {
+      id: "lord-floof",
+      name: "Lord Floof",
+      mapCoordinates: { x: CX - 150, y: CY + 140 },
+      requiredPlayer: "Sarah",
+      stageRequired: 2,
+      icon: "🦄",
+      description: "Lord Floof — a stuffed unicorn plush from Despicable Me. Only Sarah can claim it.",
+      hitbox: { w: 64, h: 64 },
+      unlockToken: "SARAH_TOKEN",
+      advanceStageTo: 3,
+    },
+  ],
   items: [], npcs: [],
 };

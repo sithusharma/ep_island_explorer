@@ -6,10 +6,16 @@ import { supabase } from "@/app/utils/supabase";
 interface Props {
   locationId: string;
   onClose: () => void;
+  onImageSelect?: (imageName: string) => void;
 }
 
-export default function MemoryGallery({ locationId, onClose }: Props) {
-  const [urls, setUrls] = useState<string[]>([]);
+interface GalleryImage {
+  name: string;
+  url: string;
+}
+
+export default function MemoryGallery({ locationId, onClose, onImageSelect }: Props) {
+  const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
@@ -32,12 +38,18 @@ export default function MemoryGallery({ locationId, onClose }: Props) {
     const fetchImages = async () => {
       try {
         setLoading(true);
-        // Hardcoded to look at the 'test' folder for now
-        const { data, error } = await supabase.storage.from("EP_Photos").list("test");
-        
-        if (error) {
-          console.error("Error fetching from Supabase:", error);
-          return;
+        const folderCandidates = [locationId, "test"];
+        let data: { name: string }[] | null = null;
+        let resolvedFolder = "test";
+
+        for (const folder of folderCandidates) {
+          const { data: listed, error } = await supabase.storage.from("EP_Photos").list(folder);
+          if (error) continue;
+          if (listed && listed.length > 0) {
+            data = listed;
+            resolvedFolder = folder;
+            break;
+          }
         }
 
         if (data) {
@@ -51,11 +63,13 @@ export default function MemoryGallery({ locationId, onClose }: Props) {
           const mappedUrls = validFiles.map((file) => {
             const { data: publicUrlData } = supabase.storage
               .from("EP_Photos")
-              .getPublicUrl(`test/${file.name}`);
-            return publicUrlData.publicUrl;
+              .getPublicUrl(`${resolvedFolder}/${file.name}`);
+            return { name: file.name, url: publicUrlData.publicUrl };
           });
 
-          setUrls(mappedUrls);
+          setImages(mappedUrls);
+        } else {
+          setImages([]);
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -88,16 +102,19 @@ export default function MemoryGallery({ locationId, onClose }: Props) {
           <div className="flex h-64 items-center justify-center">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white"></div>
           </div>
-        ) : urls.length > 0 ? (
+        ) : images.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {urls.map((url, i) => (
+            {images.map((image, i) => (
               <div
                 key={i}
-                onClick={() => setLightboxUrl(url)}
+                onClick={() => {
+                  onImageSelect?.(image.name);
+                  setLightboxUrl(image.url);
+                }}
                 className="group relative aspect-video overflow-hidden rounded-2xl bg-white/5 border border-white/10 cursor-pointer"
               >
                 <img
-                  src={url}
+                  src={image.url}
                   alt={`Memory ${i}`}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   loading="lazy"

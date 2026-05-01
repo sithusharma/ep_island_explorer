@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import type { CarState, MapData, NpcState, ActiveTrigger, PeerState } from "@/app/lib/types";
+import type { CarState, MapData, NpcState, ActiveTrigger, PeerState, Artifact } from "@/app/lib/types";
 import { isInBoundary, findTrigger } from "@/app/lib/collision";
 import { initNpc, updateNpc } from "@/app/lib/npc";
 import { renderFrame } from "@/app/lib/renderer";
@@ -20,6 +20,8 @@ const FADE_DUR  = 0.5;   // seconds per fade direction
 const CAR_HALF_L = 19;
 const CAR_HALF_W = 11;
 const SOLID_PAD_PX = 3;
+const MILO_BLOCK_RADIUS = 28;
+const MILO_TALK_RADIUS = 90;
 
 function getCarCorners(car: CarState): { x: number; y: number }[] {
   const cos = Math.cos(car.rotation);
@@ -34,6 +36,60 @@ function getCarCorners(car: CarState): { x: number; y: number }[] {
 
 function ptInRect(px: number, py: number, rx: number, ry: number, rw: number, rh: number) {
   return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
+}
+
+function carOverlapsArtifact(car: CarState, artifact: Artifact) {
+  const boxW = artifact.hitbox?.w ?? 42;
+  const boxH = artifact.hitbox?.h ?? 42;
+  const rx = artifact.mapCoordinates.x - boxW / 2;
+  const ry = artifact.mapCoordinates.y - boxH / 2;
+
+  if (ptInRect(car.x, car.y, rx, ry, boxW, boxH)) return true;
+  for (const c of getCarCorners(car)) {
+    if (ptInRect(c.x, c.y, rx, ry, boxW, boxH)) return true;
+  }
+  return false;
+}
+
+function carOverlapsNpcRadius(car: CarState, npc: NpcState, radius: number) {
+  const points = [{ x: car.x, y: car.y }, ...getCarCorners(car)];
+  for (const point of points) {
+    if (Math.hypot(point.x - npc.x, point.y - npc.y) <= radius) return true;
+  }
+  return false;
+}
+
+function playCollectSound() {
+  if (typeof window === "undefined") return;
+  const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return;
+
+  const ctx = new AudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(620, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(980, ctx.currentTime + 0.12);
+
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.2);
+  osc.onended = () => {
+    void ctx.close();
+  };
+}
+
+interface EngineOptions {
+  currentPlayerName?: string;
+  currentStage?: number;
+  collectedArtifactNames?: string[];
+  onCollectArtifact?: (artifact: Artifact) => Promise<void> | void;
 }
 
 function checkSolidsPadded(car: CarState, entities: MapData["entities"], padPx: number): boolean {
@@ -58,11 +114,13 @@ export function useEngine(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   viewportRef: React.RefObject<{ w: number; h: number }>,
   keys: React.RefObject<Set<string>>,
-  peersRef?: React.RefObject<PeerState[]>
+  peersRef?: React.RefObject<PeerState[]>,
+  options?: EngineOptions
 ) {
   // ── Active map state (React-level, triggers re-render for UI) ──────
   const [activeMapId, setActiveMapId] = useState("vt-island");
   const [activeTrigger, setActiveTrigger] = useState<ActiveTrigger | null>(null);
+  const [nearbyNpcId, setNearbyNpcId] = useState<string | null>(null);
 
   // ── Refs for mutable game state (no re-renders) ────────────────────
   const initialMap = getMap("vt-island");
@@ -75,6 +133,7 @@ export function useEngine(
   });
   const npcsRef = useRef<NpcState[]>(initialMap.npcs.map(initNpc));
   const safePosRef = useRef({ x: initialMap.spawnX, y: initialMap.spawnY });
+  const collectedArtifactIdsRef = useRef<Set<string>>(new Set());
 
   // Fade transition
   const fadeRef = useRef({
@@ -127,6 +186,16 @@ export function useEngine(
     const map = mapRef.current;
     const car = carRef.current;
     const k = keys.current!;
+    const currentStage = options?.currentStage ?? -1;
+    const globallyCollected = new Set((options?.collectedArtifactNames ?? []).map((name) => name.trim().toLowerCase()));
+    const visibleArtifacts = (map.artifacts ?? []).filter((artifact) => {
+      const requiredStage = artifact.stageRequired ?? artifact.stage ?? -1;
+      if (requiredStage !== currentStage) return false;
+      if (artifact.requiredArtifacts?.some((required) => !globallyCollected.has(required.trim().toLowerCase()))) return false;
+      if (collectedArtifactIdsRef.current.has(artifact.id)) return false;
+      if (globallyCollected.has(artifact.name.trim().toLowerCase())) return false;
+      return true;
+    });
 
     // ── Fade transition logic ────────────────────────────────────────
     const fade = fadeRef.current;
@@ -173,9 +242,10 @@ export function useEngine(
       // Collision checks
       const proposed: CarState = { ...car, x: nx, y: ny };
       const hitSolid = checkSolidsPadded(proposed, map.entities, SOLID_PAD_PX);
+      const hitMilo = npcsRef.current.some((npc) => npc.id === "milo" && carOverlapsNpcRadius(proposed, npc, MILO_BLOCK_RADIUS));
       const outOfBounds = !isInBoundary(nx, ny, map.boundary);
 
-      if (!hitSolid && !outOfBounds) {
+      if (!hitSolid && !hitMilo && !outOfBounds) {
         car.x = nx;
         car.y = ny;
         safePosRef.current = { x: car.x, y: car.y };
@@ -187,7 +257,7 @@ export function useEngine(
         car.y -= vy * push;
 
         // If the car still collides (e.g. spawned into a corner), nudge it further back.
-        if (checkSolidsPadded(car, map.entities, SOLID_PAD_PX)) {
+        if (checkSolidsPadded(car, map.entities, SOLID_PAD_PX) || npcsRef.current.some((npc) => npc.id === "milo" && carOverlapsNpcRadius(car, npc, MILO_BLOCK_RADIUS))) {
           const len = Math.hypot(vx, vy) || 1;
           car.x -= (vx / len) * 4;
           car.y -= (vy / len) * 4;
@@ -199,7 +269,11 @@ export function useEngine(
           car.y -= (vy === 0 ? 0 : Math.sign(vy)) * 6;
         }
 
-        if (checkSolidsPadded(car, map.entities, SOLID_PAD_PX) || !isInBoundary(car.x, car.y, map.boundary)) {
+        if (
+          checkSolidsPadded(car, map.entities, SOLID_PAD_PX) ||
+          npcsRef.current.some((npc) => npc.id === "milo" && carOverlapsNpcRadius(car, npc, MILO_BLOCK_RADIUS)) ||
+          !isInBoundary(car.x, car.y, map.boundary)
+        ) {
           car.x = safePosRef.current.x;
           car.y = safePosRef.current.y;
         }
@@ -209,6 +283,17 @@ export function useEngine(
 
       // ── Ferry cooldown tick ────────────────────────────────────────
       if (ferryRef.current.cooldown > 0) ferryRef.current.cooldown -= dt;
+
+      // ── Artifact collection ───────────────────────────────────────
+      for (const artifact of visibleArtifacts) {
+        if (!carOverlapsArtifact(car, artifact)) continue;
+        if ((options?.currentPlayerName ?? "").trim().toLowerCase() !== artifact.requiredPlayer.trim().toLowerCase()) continue;
+
+        collectedArtifactIdsRef.current.add(artifact.id);
+        playCollectSound();
+        void options?.onCollectArtifact?.(artifact);
+        break;
+      }
 
       // ── Trigger detection ──────────────────────────────────────────
       const trigEntity = findTrigger(car, map.entities);
@@ -258,6 +343,17 @@ export function useEngine(
       updateNpc(npc, dt, map.boundary, map.entities);
     }
 
+    const nearbyMilo = npcsRef.current.find((npc) => {
+      if (npc.id !== "milo") return false;
+      const dx = npc.x - car.x;
+      const dy = npc.y - car.y;
+      return Math.hypot(dx, dy) <= MILO_TALK_RADIUS;
+    });
+    setNearbyNpcId((prev) => {
+      const next = nearbyMilo?.id ?? null;
+      return prev === next ? prev : next;
+    });
+
     // ── Render ───────────────────────────────────────────────────────
     const cvs = canvasRef.current;
     if (!cvs) return;
@@ -266,8 +362,8 @@ export function useEngine(
     const dpr = window.devicePixelRatio || 1;
     const vp = viewportRef.current!;
 
-    renderFrame(ctx, map, car, npcsRef.current, vp, dpr, fade.alpha, peersRef?.current ?? []);
+    renderFrame(ctx, map, car, npcsRef.current, visibleArtifacts, vp, dpr, fade.alpha, peersRef?.current ?? []);
   });
 
-  return { activeMapId, activeTrigger, startTransition, carRef };
+  return { activeMapId, activeTrigger, nearbyNpcId, startTransition, carRef };
 }

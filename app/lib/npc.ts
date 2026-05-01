@@ -16,6 +16,7 @@ export function initNpc(def: NpcDef): NpcState {
     speed: def.speed,
     wanderRadius: def.wanderRadius,
     spriteSrc: def.spriteSrc,
+    spriteScale: def.spriteScale,
     bodyColor: def.bodyColor,
     accentColor: def.accentColor,
     state: "idle",
@@ -42,6 +43,15 @@ export function updateNpc(
   boundary: Boundary,
   solids: Entity[]
 ): void {
+  if (npc.speed <= 0 || npc.wanderRadius <= 0) {
+    npc.x = npc.homeX;
+    npc.y = npc.homeY;
+    npc.targetX = npc.homeX;
+    npc.targetY = npc.homeY;
+    npc.state = "idle";
+    return;
+  }
+
   if (npc.state === "idle") {
     npc.idleTimer -= dt;
     if (npc.idleTimer <= 0) {

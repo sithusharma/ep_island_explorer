@@ -2,11 +2,16 @@
 
 import { useRef, useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/app/utils/supabase";
 import { useInput } from "@/app/hooks/useInput";
 import { useEngine } from "@/app/hooks/useEngine";
+import { useInventory } from "@/app/hooks/useInventory";
 import { useMultiplayer } from "@/app/hooks/useMultiplayer";
-import { useGameSession } from "@/app/hooks/useGameSession";
+import { getMiloHint, useGameState } from "@/app/hooks/useGameState";
 import type { PeerState } from "@/app/lib/types";
+import DialogBox from "./DialogBox";
+import GraveyardUI from "./GraveyardUI";
+import InventoryBar from "./InventoryBar";
 import JukeboxUI from "./JukeboxUI";
 import MemoryGallery from "./MemoryGallery";
 
@@ -34,10 +39,49 @@ function triggerAccent(type: string): string {
   return "border-white/20 text-white";
 }
 
+function playMiloMeow() {
+  if (typeof window === "undefined") return;
+  const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioCtx) return;
+
+  const ctx = new AudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(620, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(420, ctx.currentTime + 0.08);
+  osc.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.18);
+
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1800, ctx.currentTime);
+
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.24);
+  osc.onended = () => {
+    void ctx.close();
+  };
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
   user: User;
+}
+
+interface ToastState {
+  message: string;
+  tone?: "info" | "success" | "warning";
+  durationMs?: number;
 }
 
 export default function GameCanvas({ user }: Props) {
@@ -48,6 +92,12 @@ export default function GameCanvas({ user }: Props) {
   const [activeGallery, setActiveGallery] = useState<string | null>(null);
   const [showJukebox,   setShowJukebox]   = useState(false);
   const [showGraveyard, setShowGraveyard] = useState(false);
+  const [isDialogOpen,  setIsDialogOpen]  = useState(false);
+  const [showAbcHint,    setShowAbcHint]    = useState(false);
+  const [showJakeToken,  setShowJakeToken]  = useState(false);
+  const [showMiloConfirm, setShowMiloConfirm] = useState(false);
+  const [showFloofToken,  setShowFloofToken]  = useState(false);
+  const [toast,          setToast]          = useState<ToastState | null>(null);
 
   // ── Canvas sizing ──────────────────────────────────────────────────────────
 
@@ -84,7 +134,37 @@ export default function GameCanvas({ user }: Props) {
 
   // ── Game engine ────────────────────────────────────────────────────────────
 
-  const { activeTrigger, activeMapId, carRef } = useEngine(canvasRef, viewportRef, keys, peersRef);
+  const username = user.user_metadata?.username as string | undefined
+    ?? user.email?.split("@")[0]
+    ?? "Player";
+
+  const {
+    items: inventoryItems,
+    activeArtifacts,
+    collectArtifact,
+  } = useInventory(username);
+
+  const { currentStage, isArtifact, advanceStage, unlockToken, session } = useGameState();
+  const hasFakeId     = activeArtifacts.some((a) => a.trim().toLowerCase() === "fake id");
+  const hasWheelchair = activeArtifacts.some((a) => a.trim().toLowerCase() === "wheelchair");
+
+  const { activeTrigger, activeMapId, nearbyNpcId, carRef } = useEngine(
+    canvasRef,
+    viewportRef,
+    keys,
+    peersRef,
+    {
+      currentPlayerName: username,
+      currentStage,
+      collectedArtifactNames: activeArtifacts,
+      onCollectArtifact: async (artifact) => {
+        await collectArtifact(artifact.name);
+        if (artifact.name === "Lord Floof") setShowFloofToken(true);
+        if (artifact.unlockToken) await unlockToken(artifact.unlockToken);
+        if (artifact.advanceStageTo !== undefined) await advanceStage(artifact.advanceStageTo);
+      },
+    }
+  );
 
   // Wire the snapshot getter to the live engine refs
   useEffect(() => {
@@ -97,10 +177,6 @@ export default function GameCanvas({ user }: Props) {
   }, [carRef, activeMapId]);
 
   // ── Multiplayer ────────────────────────────────────────────────────────────
-
-  const username = user.user_metadata?.username as string | undefined
-    ?? user.email?.split("@")[0]
-    ?? "Player";
 
   const { peers } = useMultiplayer(user.id, username, snapshotRef);
 
@@ -116,33 +192,60 @@ export default function GameCanvas({ user }: Props) {
   }, [peers]);
 
   // ── Game session (Supabase Realtime) ──────────────────────────────────────
-
-  const { isArtifact } = useGameSession();
-
   // ── Keyboard handlers ─────────────────────────────────────────────────────
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter") return;
+      if (nearbyNpcId === "milo") {
+        setShowMiloConfirm(true);
+        return;
+      }
       if (!activeTrigger) return;
+
+      // Jake delivers wheelchair to RIU
+      if (activeTrigger.entityId === "riu" && hasWheelchair && currentStage < 2) {
+        setShowJakeToken(true);
+        void unlockToken("JAKE_TOKEN");
+        void advanceStage(2);
+        return;
+      }
+
+      if (activeTrigger.entityId === "abc-store" && !hasFakeId) {
+        setToast({ message: "ABC is locked you need a ID. Where were we all when we got our fake id?", tone: "warning" });
+        return;
+      }
+      if (activeTrigger.entityId === "abc-store" && hasFakeId) {
+        setShowAbcHint(true);
+        return;
+      }
       if (activeTrigger.type === "jukebox")   { setShowJukebox(true);   return; }
       if (activeTrigger.type === "graveyard") { setShowGraveyard(true); return; }
       setActiveGallery(activeTrigger.entityId);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeTrigger]);
+  }, [activeTrigger, hasFakeId, hasWheelchair, currentStage, nearbyNpcId, unlockToken, advanceStage]);
 
   useEffect(() => {
-    if (!showGraveyard) return;
-    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setShowGraveyard(false); };
+    if (!isDialogOpen) return;
+    playMiloMeow();
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setIsDialogOpen(false); };
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
-  }, [showGraveyard]);
+  }, [isDialogOpen]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), toast.durationMs ?? 4200);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const showPrompt = activeTrigger !== null && !activeGallery && !showJukebox && !showGraveyard;
+  const graveyardDone = (session?.unlocked_tokens ?? []).includes("graveyard-done");
+  const showPrompt    = activeTrigger !== null && !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm;
+  const showNpcPrompt = nearbyNpcId === "milo"  && !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm;
   const accent = activeTrigger ? triggerAccent(activeTrigger.type) : "";
   const icon   = activeTrigger ? triggerIcon(activeTrigger.type, activeTrigger.name) : "";
 
@@ -157,6 +260,18 @@ export default function GameCanvas({ user }: Props) {
           <span className="font-semibold text-gray-300">Arrow Keys</span> to drive
         </div>
       )}
+
+      <InventoryBar items={inventoryItems} slots={5} />
+
+      {/* Logout */}
+      <button
+        type="button"
+        onClick={() => supabase.auth.signOut()}
+        className="absolute z-10 rounded-full bg-black/50 px-2.5 py-1 text-[10px] text-gray-500 backdrop-blur-sm hover:text-gray-300 hover:bg-black/70 transition"
+        style={{ left: 14, top: 48 }}
+      >
+        sign out
+      </button>
 
       {/* Peer count badge */}
       {peers.size > 0 && (
@@ -176,25 +291,248 @@ export default function GameCanvas({ user }: Props) {
 
       {/* Memory Gallery */}
       {activeGallery && (
-        <MemoryGallery locationId={activeGallery} onClose={() => setActiveGallery(null)} />
+        <MemoryGallery
+          locationId={activeGallery}
+          onClose={() => setActiveGallery(null)}
+          onImageSelect={async (imageName) => {
+            if (activeGallery === "library") {
+              if (imageName.toLowerCase() !== "key.jpg") return;
+              if (hasFakeId) return;
+              await collectArtifact("Fake ID");
+              await advanceStage(1);
+              setToast({
+                message: "You found the Fake IDs! The ABC Store is now unlocked. Ask Milo what's next.",
+                tone: "success",
+                durationMs: 8000,
+              });
+              return;
+            }
+          }}
+        />
       )}
 
       {/* Jukebox */}
       {showJukebox && <JukeboxUI onClose={() => setShowJukebox(false)} />}
 
-      {/* Graveyard alert */}
-      {showGraveyard && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setShowGraveyard(false)}
-        >
-          <div className="text-center" onClick={(e) => e.stopPropagation()}>
-            <p className="text-4xl font-bold tracking-wide text-white">
-              Here lies the fallen members.
-            </p>
-            <p className="mt-5 text-sm text-gray-500">Click or press Esc to close</p>
+      {showMiloConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="w-[90%] max-w-md rounded-3xl border border-emerald-400/20 bg-neutral-950/95 px-10 py-10 shadow-2xl text-center">
+            <p className="text-4xl mb-4 select-none">🐈</p>
+            <p className="text-xl font-bold text-white mb-2">Ask Milo for a hint?</p>
+            <p className="text-sm text-gray-400 mb-8">Are you sure? Figuring it out yourself is more fun.</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => { setShowMiloConfirm(false); playMiloMeow(); setIsDialogOpen(true); }}
+                className="rounded-full border border-emerald-400/40 bg-emerald-950/40 px-8 py-3 text-sm font-semibold text-emerald-200 hover:bg-emerald-900/60 transition"
+              >
+                Yes, give me a hint
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMiloConfirm(false)}
+                className="rounded-full border border-white/10 bg-white/5 px-8 py-3 text-sm font-semibold text-gray-400 hover:bg-white/10 transition"
+              >
+                No thanks
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {isDialogOpen && (
+        <DialogBox
+          title="Milo"
+          message={getMiloHint(currentStage, session?.unlocked_tokens ?? [])}
+          onClose={() => setIsDialogOpen(false)}
+        />
+      )}
+
+      {showAbcHint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="relative w-[90%] max-w-lg rounded-3xl border border-amber-400/30 bg-neutral-950/95 px-10 py-10 shadow-2xl text-center">
+            <p className="text-2xl font-bold text-amber-300 mb-4">🍺 ABC Store Hint</p>
+            <p className="text-lg leading-8 text-white">
+              These pictures include all of us super drunk. One of them will lead you to the next hint. For some help look for a petite person.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setShowAbcHint(false); setActiveGallery("abc-store"); }}
+              className="mt-8 rounded-full border border-amber-400/40 bg-amber-500/20 px-8 py-3 text-base font-semibold text-amber-100 transition hover:bg-amber-500/40"
+            >
+              Got it ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Jake Token — theatrical reveal */}
+      {showJakeToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+          style={{ background: "radial-gradient(ellipse at center, #1a0a00 0%, #000 70%)" }}>
+
+          {/* Ambient glow rings */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[600px] h-[600px] rounded-full opacity-20 animate-ping"
+              style={{ background: "radial-gradient(circle, #f59e0b 0%, transparent 70%)" }} />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[400px] h-[400px] rounded-full opacity-10"
+              style={{ background: "radial-gradient(circle, #fde68a 0%, transparent 60%)" }} />
+          </div>
+
+          {/* Card */}
+          <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-amber-400/20"
+            style={{ background: "linear-gradient(160deg, rgba(120,53,15,0.35) 0%, rgba(0,0,0,0.6) 100%)", backdropFilter: "blur(12px)" }}>
+
+            {/* Photo */}
+            <div className="mb-5 rounded-2xl overflow-hidden shadow-2xl border-4 border-amber-400/40 w-full max-w-xs aspect-square">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/jake.jpg" alt="Jake" className="w-full h-full object-cover" />
+            </div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.4em] text-amber-400 mb-2">
+              Token Unlocked
+            </p>
+
+            <h1 className="text-5xl font-black text-white mb-2 tracking-tight"
+              style={{ textShadow: "0 0 40px rgba(251,191,36,0.6)" }}>
+              Congrats Jake! 🏆
+            </h1>
+
+            <p className="text-lg text-amber-200 font-semibold mb-5">
+              Now stop drinking so much.
+            </p>
+
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-950/30 px-8 py-3 mb-8">
+              <p className="text-2xl font-black text-amber-300 tracking-widest">JAKE_TOKEN</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowJakeToken(false)}
+              className="rounded-full border border-amber-400/50 bg-amber-500/20 px-14 py-4 text-lg font-bold text-amber-100 transition hover:bg-amber-500/40 hover:scale-105 active:scale-95"
+            >
+              Claim ✦
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showNpcPrompt && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 z-20">
+          <div className="rounded-2xl border border-emerald-400/30 bg-black/85 px-7 py-3 text-center shadow-2xl backdrop-blur-md max-w-sm w-[92%]">
+            <p className="text-lg font-bold text-white">
+              <span className="mr-2">🐈</span>
+              Milo
+            </p>
+            <p className="mt-1 text-sm text-emerald-200">
+              Press{" "}
+              <kbd className="mx-0.5 rounded border border-emerald-300/30 bg-emerald-950/40 px-1.5 py-0.5 font-mono text-xs text-emerald-100">
+                Enter
+              </kbd>{" "}
+              to talk
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Lord Floof — theatrical token reveal */}
+      {showFloofToken && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+          style={{ background: "linear-gradient(135deg, #ff4fa3 0%, #c471ed 30%, #7b52f6 60%, #12c2e9 100%)" }}
+        >
+          {/* Floating sparkles */}
+          {["✦","✧","✦","✧","✦","✧","✦","✧"].map((s, i) => (
+            <span
+              key={i}
+              className="pointer-events-none absolute text-white/40 animate-pulse select-none"
+              style={{
+                top:  `${10 + (i * 11) % 80}%`,
+                left: `${5  + (i * 13) % 90}%`,
+                fontSize: `${14 + (i % 3) * 8}px`,
+                animationDelay: `${i * 0.3}s`,
+              }}
+            >
+              {s}
+            </span>
+          ))}
+
+          {/* Card */}
+          <div
+            className="relative z-10 flex flex-col items-center text-center px-10 py-10 max-w-2xl w-[94%] rounded-3xl shadow-2xl"
+            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(18px)", border: "1px solid rgba(255,255,255,0.18)" }}
+          >
+            {/* Photo */}
+            <div className="mb-6 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/30 w-full max-w-sm aspect-square">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/floof.jpeg"
+                alt="Sarah and Lord Floof"
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div className="text-6xl mb-3 animate-bounce select-none">🦄</div>
+
+            <h1
+              className="text-5xl font-black mb-2 tracking-tight"
+              style={{
+                background: "linear-gradient(90deg, #fff 0%, #fde68a 40%, #fff 80%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                textShadow: "none",
+              }}
+            >
+              Congrats Sarah! YOU GOT A TOKEN!
+            </h1>
+
+            <p className="text-lg font-semibold text-white/80 mb-5">
+              Why you so weird though 😭
+            </p>
+
+            <div className="rounded-2xl border border-white/20 bg-white/10 px-8 py-4 mb-8">
+              <p className="text-2xl font-black tracking-widest text-white">SARAH_TOKEN</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowFloofToken(false)}
+              className="rounded-full px-14 py-4 text-lg font-black text-white transition hover:scale-105 active:scale-95"
+              style={{ background: "linear-gradient(90deg, #ff4fa3, #c471ed, #7b52f6)", boxShadow: "0 0 30px rgba(196,113,237,0.6)" }}
+            >
+              Claim ✦
+            </button>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
+          <div
+            className={[
+              "max-w-xl rounded-2xl border px-5 py-3 text-sm font-semibold shadow-2xl backdrop-blur-md",
+              toast.tone === "success" && "border-emerald-400/30 bg-emerald-950/85 text-emerald-100",
+              toast.tone === "warning" && "border-amber-400/30 bg-amber-950/85 text-amber-100",
+              (!toast.tone || toast.tone === "info") && "border-white/10 bg-neutral-950/88 text-white",
+            ].filter(Boolean).join(" ")}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
+
+      {/* Graveyard */}
+      {showGraveyard && (
+        <GraveyardUI
+          onClose={() => setShowGraveyard(false)}
+          alreadyDone={graveyardDone}
+          onComplete={async () => {
+            await unlockToken("graveyard-done");
+            setToast({ message: "The fallen have been honored. Ask Milo what's next.", tone: "success", durationMs: 6000 });
+          }}
+        />
       )}
 
       {/* Universal "Press Enter" prompt */}
