@@ -191,11 +191,12 @@ export function useEngine(
     const car = carRef.current;
     const k = keys.current!;
     const currentStage = options?.currentStage ?? -1;
-    const unlockedTokens = options?.unlockedTokens ?? [];
-    const showGarages = unlockedTokens.includes("ARAV_TOKEN");
+    const showGarages = currentStage >= 6;
+    const showGraveyard = currentStage >= 2;
     const showFinalNote = currentStage >= 10;
     const activeEntities = map.entities.filter((entity) => {
       if (!showGarages && entity.id.startsWith("garage-")) return false;
+      if (!showGraveyard && entity.id === "graveyard") return false;
       if (!showFinalNote && entity.id === "final-note") return false;
       return true;
     });

@@ -586,7 +586,7 @@ export const puertoRicoMap: MapData = {
     {
       id: "beer",
       name: "Beer",
-      mapCoordinates: { x: 2240, y: 2820 },
+      mapCoordinates: { x: 2460, y: 2680 },
       requiredPlayer: "Arav",
       stageRequired: 5,
       icon: "🍺",

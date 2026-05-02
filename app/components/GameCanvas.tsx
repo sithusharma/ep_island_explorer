@@ -135,7 +135,6 @@ export default function GameCanvas({ user }: Props) {
   const [showAravToken, setShowAravToken] = useState(false);
   const [showArnavToken, setShowArnavToken] = useState(false);
   const [showPersonalEdgeToken, setShowPersonalEdgeToken] = useState(false);
-  const [showMiloConfirm, setShowMiloConfirm] = useState(false);
   const [showFloofToken, setShowFloofToken] = useState(false);
   const [showFinalNote, setShowFinalNote] = useState(false);
   const [showFinalPhoto, setShowFinalPhoto] = useState(false);
@@ -267,12 +266,8 @@ export default function GameCanvas({ user }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter") return;
       if (nearbyNpcId === "milo") {
-        if (currentStage >= 10) {
-          playMiloMeow();
-          setIsDialogOpen(true);
-        } else {
-          setShowMiloConfirm(true);
-        }
+        playMiloMeow();
+        setIsDialogOpen(true);
         return;
       }
       if (!activeTrigger) return;
@@ -343,7 +338,7 @@ export default function GameCanvas({ user }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const graveyardDone = (session?.unlocked_tokens ?? []).includes("graveyard-done");
-  const activePromptBlockers = !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm && !showRiyaToken && !showSanjanaToken && !showAravToken && !showArnavToken && !showPersonalEdgeToken && !showFloofToken && !showFinalNote && !showFinalPhoto;
+  const activePromptBlockers = !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showRiyaToken && !showSanjanaToken && !showAravToken && !showArnavToken && !showPersonalEdgeToken && !showFloofToken && !showFinalNote && !showFinalPhoto;
   const showPrompt = activeTrigger !== null && activePromptBlockers;
   const activeNpcLabel = nearbyNpcId === "milo" ? "🐈 Milo" : null;
   const showNpcPrompt = activeNpcLabel !== null && activePromptBlockers;
@@ -527,32 +522,6 @@ export default function GameCanvas({ user }: Props) {
 
       {/* Jukebox */}
       {showJukebox && <JukeboxUI onClose={() => setShowJukebox(false)} />}
-
-      {showMiloConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="w-[90%] max-w-md rounded-3xl border border-emerald-400/20 bg-neutral-950/95 px-10 py-10 shadow-2xl text-center">
-            <p className="text-4xl mb-4 select-none">🐈</p>
-            <p className="text-xl font-bold text-white mb-2">Ask Milo for a hint?</p>
-            <p className="text-sm text-gray-400 mb-8">Are you sure? Figuring it out yourself is more fun.</p>
-            <div className="flex gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => { setShowMiloConfirm(false); playMiloMeow(); setIsDialogOpen(true); }}
-                className="rounded-full border border-emerald-400/40 bg-emerald-950/40 px-8 py-3 text-sm font-semibold text-emerald-200 hover:bg-emerald-900/60 transition"
-              >
-                Yes, give me a hint
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowMiloConfirm(false)}
-                className="rounded-full border border-white/10 bg-white/5 px-8 py-3 text-sm font-semibold text-gray-400 hover:bg-white/10 transition"
-              >
-                No thanks
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {isDialogOpen && (
         <DialogBox

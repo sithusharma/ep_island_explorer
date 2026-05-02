@@ -39,7 +39,7 @@ export function getMiloHint(currentStage: number, unlockedTokens: string[] = [])
     case 6:
       return "Something appeared back on VT Island. Everyone should find their own parking spot and look through the photos. One ugly picture is hiding in there.";
     case 7:
-      return "The OG Edge group needs to find the two key photos in the Year 2 folder of the Edge album.";
+      return "The OG Edge group needs to find the two key photos in the Edge album.";
     case 8:
       return "Last but not least, we have a certain pookie who loves to smoke. This pookie has to find the one picture in the game where he is smoking. Good luck!";
     case 9:

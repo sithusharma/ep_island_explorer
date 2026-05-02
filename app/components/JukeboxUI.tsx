@@ -1,94 +1,143 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
+import YouTube, { type YouTubePlayer } from "react-youtube";
 
-interface JukeboxUIProps {
+interface Props {
   onClose: () => void;
 }
 
-// Placeholder songs – replace with real URLs as needed
-const songs = [
-  {
-    id: "song1",
-    title: "Chill Beats",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-  },
-  {
-    id: "song2",
-    title: "Ambient Loop",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-  },
-  {
-    id: "song3",
-    title: "Upbeat Groove",
-    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-  },
+const SONGS = [
+  { id: "UhbixyxgsiU", title: "I Just Wanna Rock", artist: "Lil Uzi Vert" },
+  { id: "2kjolTLZ_Mg", title: "São Paulo",          artist: "Kaytranada" },
+  { id: "HMqgVXSvwGo", title: "Fireball",           artist: "Pitbull" },
+  { id: "GxldQ9eX2wo", title: "Until I Found You",  artist: "Stephen Sanchez" },
 ];
 
-export default function JukeboxUI({ onClose }: JukeboxUIProps) {
-  const [currentSong, setCurrentSong] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [volume, setVolume] = useState(0.5);
+export default function JukeboxUI({ onClose }: Props) {
+  const [currentIdx, setCurrentIdx] = useState<number | null>(null);
+  const [isPlaying,  setIsPlaying]  = useState(false);
+  const [volume,     setVolume]     = useState(70);
+  const [ready,      setReady]      = useState(false);
+  const playerRef = useRef<YouTubePlayer | null>(null);
 
-  // Auto‑play selected song
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-      if (currentSong) {
-        audioRef.current.play();
+  const loadSong = (idx: number) => {
+    if (currentIdx === idx) {
+      if (isPlaying) {
+        playerRef.current?.pauseVideo();
+        setIsPlaying(false);
       } else {
-        audioRef.current.pause();
+        playerRef.current?.playVideo();
+        setIsPlaying(true);
       }
+      return;
     }
-  }, [currentSong, volume]);
-
-  const handlePlayPause = (songId: string) => {
-    setCurrentSong((prev) => (prev === songId ? null : songId));
+    setReady(false);
+    setCurrentIdx(idx);
+    setIsPlaying(true);
   };
 
+  const onPlayerReady = (e: { target: YouTubePlayer }) => {
+    playerRef.current = e.target;
+    playerRef.current.setVolume(volume);
+    setReady(true);
+    if (isPlaying) e.target.playVideo();
+  };
+
+  const onVolumeChange = (v: number) => {
+    setVolume(v);
+    playerRef.current?.setVolume(v);
+  };
+
+  const currentSong = currentIdx !== null ? SONGS[currentIdx] : null;
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-30">
-      <div className="relative w-full max-w-md rounded-xl border border-gray-600 bg-gray-900/90 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+
+      {/* Hidden YouTube players — one per song, only the active one is mounted */}
+      {currentIdx !== null && (
+        <div style={{ position: "absolute", width: 0, height: 0, overflow: "hidden", pointerEvents: "none" }}>
+          <YouTube
+            key={SONGS[currentIdx].id}
+            videoId={SONGS[currentIdx].id}
+            opts={{ playerVars: { autoplay: 1, controls: 0 } }}
+            onReady={onPlayerReady}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnd={() => setIsPlaying(false)}
+          />
+        </div>
+      )}
+
+      {/* UI */}
+      <div className="relative w-full max-w-sm rounded-2xl border border-purple-500/30 bg-neutral-950/95 px-6 py-7 shadow-2xl">
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-2 right-2 text-gray-400 hover:text-white transition"
+          className="absolute right-4 top-4 text-gray-500 hover:text-white transition text-lg"
         >
           ✕
         </button>
-        <h2 className="mb-4 text-center text-xl font-bold text-white">Jukebox</h2>
-        <ul className="space-y-3">
-          {songs.map((song) => (
-            <li
-              key={song.id}
-              className="flex items-center justify-between rounded bg-gray-800 px-3 py-2 text-gray-200"
-            >
-              <span className="flex-1 truncate mr-2">{song.title}</span>
-              <button
-                onClick={() => handlePlayPause(song.id)}
-                className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 transition"
-              >
-                {currentSong === song.id ? "Pause" : "Play"}
-              </button>
-            </li>
-          ))}
+
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-2xl">♫</span>
+          <h2 className="text-lg font-black text-white tracking-wide">Jukebox</h2>
+        </div>
+
+        {/* Song list */}
+        <ul className="space-y-2 mb-6">
+          {SONGS.map((song, idx) => {
+            const active = currentIdx === idx;
+            return (
+              <li key={song.id}>
+                <button
+                  type="button"
+                  onClick={() => loadSong(idx)}
+                  className={[
+                    "w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition",
+                    active
+                      ? "bg-purple-600/30 border border-purple-400/40"
+                      : "bg-white/5 border border-white/5 hover:bg-white/10",
+                  ].join(" ")}
+                >
+                  <span className="text-xl w-7 shrink-0 text-center select-none">
+                    {active && isPlaying ? "▐▌" : "▶"}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{song.title}</p>
+                    <p className="text-xs text-gray-400 truncate">{song.artist}</p>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
         </ul>
-        <div className="mt-4 flex items-center justify-between">
-          <label className="text-sm text-gray-400">Volume</label>
+
+        {/* Now playing */}
+        {currentSong && (
+          <div className="mb-5 rounded-xl bg-purple-950/40 border border-purple-400/20 px-4 py-3 text-center">
+            <p className="text-[10px] uppercase tracking-widest text-purple-400 mb-0.5">
+              {isPlaying ? "Now Playing" : "Paused"}
+            </p>
+            <p className="text-sm font-bold text-white truncate">{currentSong.title}</p>
+            {!ready && <p className="text-xs text-gray-500 mt-1">Loading…</p>}
+          </div>
+        )}
+
+        {/* Volume */}
+        <div className="flex items-center gap-3">
+          <span className="text-gray-500 text-sm">🔈</span>
           <input
             type="range"
             min={0}
-            max={1}
-            step={0.01}
+            max={100}
+            step={1}
             value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-32"
+            onChange={(e) => onVolumeChange(Number(e.target.value))}
+            className="flex-1 accent-purple-500"
           />
+          <span className="text-gray-500 text-sm">🔊</span>
         </div>
-        {/* Hidden audio element – one per component */}
-        <audio
-          ref={audioRef}
-          src={songs.find((s) => s.id === currentSong)?.url ?? undefined}
-        />
       </div>
     </div>
   );
