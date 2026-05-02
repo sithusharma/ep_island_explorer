@@ -179,6 +179,24 @@ const drillfield: Entity = {
   },
 };
 
+const finalNote: Entity = {
+  id: "final-note", x: CX + 118, y: CY - 82, layer: 4,
+  shapes: [
+    { type: "ellipse", x: 2, y: 18, rx: 22, ry: 9, color: "rgba(0,0,0,0.18)" },
+    { type: "rect", x: -26, y: -26, w: 52, h: 38, color: "#fffaf0", radius: 10, stroke: "#d6b88b", lineWidth: 2 },
+    { type: "line", x1: -24, y1: -24, x2: 0, y2: -2, color: "#e9d5ff", width: 2 },
+    { type: "line", x1: 24, y1: -24, x2: 0, y2: -2, color: "#e9d5ff", width: 2 },
+    { type: "circle", x: 0, y: -3, r: 4, color: "#c084fc" },
+    { type: "text", x: 0, y: -38, text: "✉", color: "#f8fafc", font: "bold 14px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline, shadow: { color: "rgba(124,58,237,0.65)", blur: 8 } },
+  ],
+  label: {
+    text: "Letter", color: "#f8fafc", font: "bold 12px sans-serif",
+    offsetY: 32, shadow: { color: "rgba(0,0,0,0.9)", blur: 4 },
+  },
+  solid: false,
+  trigger: { type: "zone", name: "Letter", hitbox: { ox: -34, oy: -48, w: 68, h: 84 } },
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // NW QUADRANT — Hikes, The Spot & ABC Store
 // ═══════════════════════════════════════════════════════════════════════════
@@ -536,7 +554,7 @@ export const vtIsland: MapData = {
   bgColor: "#0e4a7a",
   boundary: { type: "ellipse", cx: CX, cy: CY, rx: IRX, ry: IRY },
   entities: [
-    ocean, island, drillfield,
+    ocean, island, drillfield, finalNote,
     cascades, dragonsTooth,
     ...roads,
     theSpot, abcStore, smokeShop,

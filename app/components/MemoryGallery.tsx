@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/app/utils/supabase";
 
 const INITIAL_IMAGE_BATCH = 16;
@@ -25,6 +25,55 @@ interface FolderConfig {
   folderOptions?: { id: string; label: string }[];
 }
 
+function isKeyImageFile(name: string) {
+  const lower = name.toLowerCase();
+  return lower === "key.jpg" || lower === "key.jpeg" || lower === "key.png" || lower === "key.heic" || lower === "key.heif";
+}
+
+function seededNumber(seed: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function mulberry32(seed: number) {
+  return function rand() {
+    let t = seed += 0x6d2b79f5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function reorderImages(images: GalleryImage[], seedKey: string) {
+  if (images.length <= 1) return images;
+
+  const keyImages = images.filter((image) => isKeyImageFile(image.name));
+  const nonKeyImages = images.filter((image) => !isKeyImageFile(image.name));
+  const rand = mulberry32(seededNumber(seedKey));
+
+  for (let i = nonKeyImages.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [nonKeyImages[i], nonKeyImages[j]] = [nonKeyImages[j], nonKeyImages[i]];
+  }
+
+  if (keyImages.length === 0) return nonKeyImages;
+
+  const visibleWindow = Math.min(INITIAL_IMAGE_BATCH, nonKeyImages.length + keyImages.length);
+  const keyInsertIndex = Math.floor(rand() * visibleWindow);
+  const reordered = [...nonKeyImages];
+
+  keyImages.forEach((image, index) => {
+    const insertAt = Math.min(reordered.length, keyInsertIndex + index);
+    reordered.splice(insertAt, 0, image);
+  });
+
+  return reordered;
+}
+
 function resolveFolders(mapId: string, locationId: string, subfolder: string | null): FolderConfig {
   const loc = locationId.toLowerCase();
 
@@ -45,14 +94,14 @@ function resolveFolders(mapId: string, locationId: string, subfolder: string | n
   if (mapId === "vt-island") {
     if (loc === "edges-apt") {
       if (!subfolder) {
-        return { folderOptions: [{id: "year-1", label: "Year 1"}, {id: "year-2", label: "Year 2"}, {id: "year-3", label: "Year 3"}, {id: "year-4", label: "Year 4"}] };
+        return { folderOptions: [{id: "Y1", label: "Year 1"}, {id: "Y2", label: "Year 2"}, {id: "Y3", label: "Year 3"}, {id: "Y4", label: "Year 4"}] };
       }
-      return { foldersToSearch: [`edges-apt/${subfolder}`] };
+      return { foldersToSearch: [`Edge/${subfolder}`] };
     }
     
     if (loc.includes("collegiate")) {
       if (!subfolder) {
-        return { folderOptions: [{id: "Y1", label: "Year 1"}, {id: "Y2", label: "Year 2"}, {id: "Y3", label: "Year 3"}, {id: "Y4", label: "Year 4"}] };
+        return { folderOptions: [{id: "Y2", label: "Year 2"}, {id: "Y3", label: "Year 3"}, {id: "Y4", label: "Year 4"}] };
       }
       return { foldersToSearch: [`Collegiate/${subfolder}`] };
     }
@@ -65,18 +114,6 @@ function resolveFolders(mapId: string, locationId: string, subfolder: string | n
       return { foldersToSearch: ["ABC", "ABC store"] };
     }
     
-    if (loc.includes("dorms")) {
-      return { foldersToSearch: ["Campus"] };
-    }
-    
-    if (loc.includes("cascades") || loc.includes("spot") || loc.includes("dragon")) {
-      return { foldersToSearch: ["Nature"] };
-    }
-
-    if (loc.includes("hub")) {
-      return { foldersToSearch: ["Hub"] };
-    }
-
     if (loc.startsWith("garage-")) {
       const rawName = locationId
         .replace(/^garage-/i, "")
@@ -88,6 +125,18 @@ function resolveFolders(mapId: string, locationId: string, subfolder: string | n
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
         .join(" ");
       return { foldersToSearch: [`Garages/individuals/${garageName}`] };
+    }
+
+    if (loc.includes("dorms")) {
+      return { foldersToSearch: ["Campus"] };
+    }
+    
+    if (loc.includes("cascades") || loc.includes("spot") || loc.includes("dragon")) {
+      return { foldersToSearch: ["Nature"] };
+    }
+
+    if (loc.includes("hub")) {
+      return { foldersToSearch: ["Hub"] };
     }
 
     if (loc.includes("frat")) {
@@ -121,7 +170,7 @@ function resolveFolders(mapId: string, locationId: string, subfolder: string | n
   }
 
   if (mapId === "puerto-rico") {
-    if (loc.includes("airbnb")) return { foldersToSearch: ["Puerto Rico/AirBnb"] };
+    if (loc.includes("airbnb")) return { foldersToSearch: ["Puerto Rico/Airbnb"] };
     if (loc.includes("beach") || loc.includes("sun-bay") || loc.includes("mosquito")) return { foldersToSearch: ["Puerto Rico/Beach"] };
     if (loc.includes("club") || loc.includes("nightlife")) return { foldersToSearch: ["Puerto Rico/Club"] };
     if (loc.includes("juan")) return { foldersToSearch: ["Puerto Rico/Old San Juan"] };
@@ -149,6 +198,8 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [subfolder, setSubfolder] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_IMAGE_BATCH);
+  const [lightboxTop, setLightboxTop] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const config = resolveFolders(mapId, locationId, subfolder);
   const showFolderSelection = !!config.folderOptions;
@@ -177,6 +228,7 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
   useEffect(() => {
     setVisibleCount(INITIAL_IMAGE_BATCH);
     setLightboxUrl(null);
+    setLightboxTop(0);
   }, [cacheKey]);
 
   useEffect(() => {
@@ -209,7 +261,7 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
         if (data) {
           const validFiles = data.filter((file) => {
             const name = file.name.toLowerCase();
-            return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png");
+            return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".heic") || name.endsWith(".heif");
           });
 
           const mappedUrls = validFiles.map((file) => {
@@ -234,8 +286,9 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
             };
           });
 
-          galleryCache.set(cacheKey, mappedUrls);
-          setImages(mappedUrls);
+          const orderedImages = reorderImages(mappedUrls, cacheKey);
+          galleryCache.set(cacheKey, orderedImages);
+          setImages(orderedImages);
         } else {
           galleryCache.set(cacheKey, []);
           setImages([]);
@@ -254,7 +307,7 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
   if (subfolder) title += ` - ${subfolder}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md overflow-y-auto">
+    <div ref={containerRef} className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md overflow-y-auto">
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-6 bg-gradient-to-b from-black/80 to-transparent">
         <h1 className="text-3xl font-bold text-white capitalize tracking-wide">
@@ -308,6 +361,7 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
                 key={`${image.name}-${i}`}
                 onClick={() => {
                   onImageSelect?.(image.name, subfolder ?? undefined);
+                  setLightboxTop(containerRef.current?.scrollTop ?? 0);
                   setLightboxUrl(image.url);
                 }}
                 className="group relative aspect-video overflow-hidden rounded-2xl bg-white/5 border border-white/10 cursor-pointer"
@@ -353,7 +407,8 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
       {/* Lightbox */}
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 p-8"
+          className="absolute inset-x-0 z-[60] flex items-center justify-center bg-black/95 p-8"
+          style={{ top: lightboxTop, minHeight: containerRef.current?.clientHeight ?? 720 }}
           onClick={() => setLightboxUrl(null)}
         >
           <img

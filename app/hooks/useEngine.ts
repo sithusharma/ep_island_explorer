@@ -6,15 +6,16 @@ import { isInBoundary, findTrigger } from "@/app/lib/collision";
 import { initNpc, updateNpc } from "@/app/lib/npc";
 import { renderFrame } from "@/app/lib/renderer";
 import { getMap } from "@/app/lib/maps/registry";
+import { isPlayerMatch } from "@/app/lib/playerIdentity";
 import { useGameLoop } from "./useGameLoop";
 
 // ── Physics constants ─────────────────────────────────────────────────────
 
-const ACCEL     = 320;   // reduced for slower acceleration
-const REV_ACCEL = 200;   // reduced reverse acceleration
+const ACCEL     = 640;   // tuned so forward speed can actually reach ~350 px/s
+const REV_ACCEL = 320;   // keep reverse responsive, but still slower than forward
 const TURN      = 3.0;   // slightly smoother steering
 const FRICTION  = 0.97;  // slightly higher friction for easier control
-const MAX_SPD   = 380;   // lower max speed
+const MAX_SPD   = 350;   // target top speed
 const FADE_DUR  = 0.5;   // seconds per fade direction
 
 const CAR_HALF_L = 19;
@@ -192,11 +193,16 @@ export function useEngine(
     const currentStage = options?.currentStage ?? -1;
     const unlockedTokens = options?.unlockedTokens ?? [];
     const showGarages = unlockedTokens.includes("ARAV_TOKEN");
-    const activeEntities = showGarages ? map.entities : map.entities.filter((e) => !e.id.startsWith("garage-"));
+    const showFinalNote = currentStage >= 10;
+    const activeEntities = map.entities.filter((entity) => {
+      if (!showGarages && entity.id.startsWith("garage-")) return false;
+      if (!showFinalNote && entity.id === "final-note") return false;
+      return true;
+    });
     const globallyCollected = new Set((options?.collectedArtifactNames ?? []).map((name) => name.trim().toLowerCase()));
     const visibleArtifacts = (map.artifacts ?? []).filter((artifact) => {
       const requiredStage = artifact.stageRequired ?? artifact.stage ?? -1;
-      if (requiredStage !== currentStage) return false;
+      if (currentStage < requiredStage) return false;
       if (artifact.requiredArtifacts?.some((required) => !globallyCollected.has(required.trim().toLowerCase()))) return false;
       if (collectedArtifactIdsRef.current.has(artifact.id)) return false;
       if (globallyCollected.has(artifact.name.trim().toLowerCase())) return false;
@@ -293,9 +299,9 @@ export function useEngine(
       // ── Artifact collection ───────────────────────────────────────
       for (const artifact of visibleArtifacts) {
         if (!carOverlapsArtifact(car, artifact)) continue;
-        const playerName = (options?.currentPlayerName ?? "").trim().toLowerCase();
-        const requiredPlayer = (artifact.requiredPlayer ?? "all").trim().toLowerCase();
-        if (playerName !== "sithu" && requiredPlayer !== "all" && requiredPlayer !== "" && playerName !== requiredPlayer) {
+        const playerName = options?.currentPlayerName ?? "";
+        const requiredPlayer = artifact.requiredPlayer ?? "all";
+        if (!isPlayerMatch(playerName, "sithu") && requiredPlayer.trim().toLowerCase() !== "all" && requiredPlayer.trim() !== "" && !isPlayerMatch(playerName, requiredPlayer)) {
           if (!rejectedArtifactDebounceRef.current.has(artifact.id)) {
             rejectedArtifactDebounceRef.current.add(artifact.id);
             options?.onRejectArtifact?.(artifact);

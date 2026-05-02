@@ -9,6 +9,7 @@ import { useInventory } from "@/app/hooks/useInventory";
 import { useMultiplayer } from "@/app/hooks/useMultiplayer";
 import { getMiloHint, useGameState } from "@/app/hooks/useGameState";
 import type { PeerState } from "@/app/lib/types";
+import { getCanonicalPlayerName, isPlayerMatch } from "@/app/lib/playerIdentity";
 import DialogBox from "./DialogBox";
 import GraveyardUI from "./GraveyardUI";
 import InventoryBar from "./InventoryBar";
@@ -74,7 +75,23 @@ function playMiloMeow() {
 
 function isKeyPhoto(imageName: string) {
   const lower = imageName.toLowerCase();
-  return lower === "key.jpg" || lower === "key.jpeg" || lower === "key.png";
+  return lower === "key.jpg" || lower === "key.jpeg" || lower === "key.png" || lower === "key.heic" || lower === "key.heif";
+}
+
+const TOKEN_SCREEN_IMAGES: Record<string, string> = {
+  jake: "/images/token_screen/jake.jpg",
+  riya: "/images/token_screen/riya.jpg",
+  sanjana: "/images/token_screen/sanjana.jpg",
+  arav: "/images/token_screen/arav.jpg",
+  arnav: "/images/token_screen/arnav.jpg",
+  ani: "/images/token_screen/ani.jpg",
+  shrey: "/images/token_screen/shrey.jpeg",
+  suraj: "/images/token_screen/suraj.jpg",
+  sarthak: "/images/token_screen/sarthak.jpeg",
+};
+
+function getTokenScreenImage(name: string) {
+  return TOKEN_SCREEN_IMAGES[name.toLowerCase()] ?? "/images/token.png";
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -87,6 +104,19 @@ interface ToastState {
   message: string;
   tone?: "info" | "success" | "warning";
   durationMs?: number;
+}
+
+function getEdgeY2Progress(session: { completed_milestones?: Record<string, unknown> } | null, playerName: string) {
+  const milestones = session?.completed_milestones;
+  if (!milestones || typeof milestones !== "object") return [] as string[];
+
+  const edgeProgressRoot = milestones.edge_y2_progress;
+  if (!edgeProgressRoot || typeof edgeProgressRoot !== "object") return [] as string[];
+
+  const playerProgress = (edgeProgressRoot as Record<string, unknown>)[playerName];
+  if (!Array.isArray(playerProgress)) return [] as string[];
+
+  return playerProgress.filter((value): value is string => typeof value === "string");
 }
 
 export default function GameCanvas({ user }: Props) {
@@ -107,6 +137,8 @@ export default function GameCanvas({ user }: Props) {
   const [showPersonalEdgeToken, setShowPersonalEdgeToken] = useState(false);
   const [showMiloConfirm, setShowMiloConfirm] = useState(false);
   const [showFloofToken, setShowFloofToken] = useState(false);
+  const [showFinalNote, setShowFinalNote] = useState(false);
+  const [showFinalPhoto, setShowFinalPhoto] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   // ── Canvas sizing ──────────────────────────────────────────────────────────
@@ -147,6 +179,7 @@ export default function GameCanvas({ user }: Props) {
   const username = user.user_metadata?.username as string | undefined
     ?? user.email?.split("@")[0]
     ?? "Player";
+  const canonicalUsername = getCanonicalPlayerName(username);
 
   const {
     items: inventoryItems,
@@ -154,9 +187,19 @@ export default function GameCanvas({ user }: Props) {
     collectArtifact,
   } = useInventory(username);
 
-  const { currentStage, isArtifact, advanceStage, unlockToken, session } = useGameState();
+  const { currentStage, isArtifact, advanceStage, unlockToken, completeMilestone, session } = useGameState();
+  const collegiatePhotosDone = ["COLLEGIATE_Y2_TOKEN", "COLLEGIATE_Y3_TOKEN", "COLLEGIATE_Y4_TOKEN"].every((token) =>
+    (session?.unlocked_tokens ?? []).includes(token)
+  );
+  const showArtifactMode = isArtifact || collegiatePhotosDone;
   const hasFakeId = activeArtifacts.some((a) => a.trim().toLowerCase() === "fake id");
   const hasWheelchair = activeArtifacts.some((a) => a.trim().toLowerCase() === "wheelchair");
+
+  useEffect(() => {
+    if (collegiatePhotosDone && currentStage < 10) {
+      void advanceStage(10);
+    }
+  }, [advanceStage, collegiatePhotosDone, currentStage]);
 
   const { activeTrigger, activeMapId, nearbyNpcId, carRef } = useEngine(
     canvasRef,
@@ -172,22 +215,22 @@ export default function GameCanvas({ user }: Props) {
         await collectArtifact(artifact.name);
         if (artifact.name === "Lord Floof") setShowFloofToken(true);
         if (artifact.name === "Beer") {
-          setToast({ message: "oh boy i hope you don't go out now. Or even worse, try and talk to some girl.", tone: "info", durationMs: 5000 });
+          setToast({ message: "Oh boy. I hope you do not go out now... or, even worse, try to talk to some girl.", tone: "info", durationMs: 5000 });
         }
         if (artifact.name === "Fake ID") {
-          setToast({ message: "you got a fake id!", tone: "success", durationMs: 5000 });
+          setToast({ message: "You got a fake ID!", tone: "success", durationMs: 5000 });
         }
         if (artifact.name === "Wheelchair") {
-          setToast({ message: "oh man this guy is so gone we have to go back to the hotel now", tone: "warning", durationMs: 5000 });
+          setToast({ message: "Oh man, this guy is so gone. We have to go back to the hotel now.", tone: "warning", durationMs: 5000 });
         }
         if (artifact.name === "Condom") {
-          setToast({ message: "oh man please dont use this especially not where we are sleeping", tone: "warning", durationMs: 5000 });
+          setToast({ message: "Oh man, please do not use this, especially not where we are sleeping.", tone: "warning", durationMs: 5000 });
         }
         if (artifact.unlockToken) await unlockToken(artifact.unlockToken);
         if (artifact.advanceStageTo !== undefined) await advanceStage(artifact.advanceStageTo);
       },
       onRejectArtifact: (artifact) => {
-        setToast({ message: "im sorry you cant pick this up", tone: "warning", durationMs: 4000 });
+        setToast({ message: "Sorry, you cannot pick this up.", tone: "warning", durationMs: 5000 });
       },
     }
   );
@@ -224,7 +267,12 @@ export default function GameCanvas({ user }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter") return;
       if (nearbyNpcId === "milo") {
-        setShowMiloConfirm(true);
+        if (currentStage >= 10) {
+          playMiloMeow();
+          setIsDialogOpen(true);
+        } else {
+          setShowMiloConfirm(true);
+        }
         return;
       }
       if (!activeTrigger) return;
@@ -252,18 +300,22 @@ export default function GameCanvas({ user }: Props) {
             void unlockToken("RIYA_TOKEN");
             void advanceStage(4);
           } else {
-            setToast({ message: "The AirBnB is locked.", tone: "warning" });
+            setToast({ message: "The AirBnB is locked.", tone: "warning", durationMs: 5000 });
           }
           return;
         }
       }
 
       if (activeTrigger.entityId === "abc-store" && !hasFakeId) {
-        setToast({ message: "ABC is locked you need a ID. Where were we all when we got our fake id?", tone: "warning" });
+        setToast({ message: "ABC is locked. You need an ID. Where were we all when we got our fake ID?", tone: "warning", durationMs: 5000 });
         return;
       }
       if (activeTrigger.entityId === "abc-store" && hasFakeId) {
         setShowAbcHint(true);
+        return;
+      }
+      if (activeTrigger.entityId === "final-note") {
+        setShowFinalNote(true);
         return;
       }
       if (activeTrigger.type === "jukebox") { setShowJukebox(true); return; }
@@ -284,33 +336,27 @@ export default function GameCanvas({ user }: Props) {
 
   useEffect(() => {
     if (!toast) return;
-    const timeout = window.setTimeout(() => setToast(null), toast.durationMs ?? 4200);
+    const timeout = window.setTimeout(() => setToast(null), toast.durationMs ?? 5000);
     return () => window.clearTimeout(timeout);
   }, [toast]);
-
-  const hasAll4Edge = ["EDGE_YEAR_1_TOKEN", "EDGE_YEAR_2_TOKEN", "EDGE_YEAR_3_TOKEN", "EDGE_YEAR_4_TOKEN"].every(y => (session?.unlocked_tokens ?? []).includes(y));
-  
-  useEffect(() => {
-    const isEdgePerson = ["suraj", "sarthak", "shrey", "ani", "sithu"].includes(username.toLowerCase());
-    if (hasAll4Edge && currentStage === 7 && isEdgePerson) {
-      const personalToken = `${username.toUpperCase()}_EDGE_TOKEN`;
-      if (!(session?.unlocked_tokens ?? []).includes(personalToken) && !showPersonalEdgeToken) {
-        setShowPersonalEdgeToken(true);
-        void unlockToken(personalToken);
-        void advanceStage(8);
-      }
-    }
-  }, [hasAll4Edge, currentStage, session, username, unlockToken, advanceStage, showPersonalEdgeToken]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   const graveyardDone = (session?.unlocked_tokens ?? []).includes("graveyard-done");
-  const activePromptBlockers = !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm && !showRiyaToken && !showSanjanaToken && !showAravToken && !showArnavToken && !showPersonalEdgeToken && !showFloofToken;
+  const activePromptBlockers = !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm && !showRiyaToken && !showSanjanaToken && !showAravToken && !showArnavToken && !showPersonalEdgeToken && !showFloofToken && !showFinalNote && !showFinalPhoto;
   const showPrompt = activeTrigger !== null && activePromptBlockers;
   const activeNpcLabel = nearbyNpcId === "milo" ? "🐈 Milo" : null;
   const showNpcPrompt = activeNpcLabel !== null && activePromptBlockers;
   const accent = activeTrigger ? triggerAccent(activeTrigger.type) : "";
   const icon = activeTrigger ? triggerIcon(activeTrigger.type, activeTrigger.name) : "";
+  const triggerPromptText =
+    activeTrigger?.entityId === "final-note"
+      ? "Press Enter to read the note"
+      : "Press Enter to explore";
+  const npcPromptText =
+    currentStage >= 10
+      ? "Press Enter to celebrate"
+      : "Press Enter to talk";
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
@@ -344,7 +390,7 @@ export default function GameCanvas({ user }: Props) {
       )}
 
       {/* Artifact mode ribbon */}
-      {isArtifact && (
+      {showArtifactMode && (
         <div className="absolute inset-x-0 top-0 flex justify-center py-2 bg-amber-500/20 backdrop-blur-sm z-10">
           <span className="text-xs font-semibold text-amber-300 tracking-widest uppercase">
             ✦ Artifact Mode — the journey lives on ✦
@@ -361,18 +407,40 @@ export default function GameCanvas({ user }: Props) {
           onImageSelect={async (imageName, subfolder) => {
             if (activeGallery === "edges-apt" && subfolder) {
               if (isKeyPhoto(imageName)) {
-                const uName = username.toLowerCase();
-                if (["suraj", "sarthak", "shrey", "ani", "sithu"].includes(uName)) {
-                  const yearToken = `EDGE_${subfolder.toUpperCase().replace("-", "_")}_TOKEN`;
+                if (subfolder.toUpperCase() !== "Y2") {
+                  return;
+                }
+
+                const isOgEdgeMember = ["suraj", "sarthak", "shrey", "ani"].some((name) => isPlayerMatch(canonicalUsername, name));
+                if (isOgEdgeMember) {
+                  const personalToken = `${canonicalUsername.toUpperCase()}_EDGE_TOKEN`;
                   const unlocked = session?.unlocked_tokens ?? [];
-                  if (!unlocked.includes(yearToken)) {
-                    void unlockToken(yearToken);
-                    setToast({ message: `You found the key photo for ${subfolder.replace("-", " ")}!`, tone: "success", durationMs: 4000 });
+                  const lowerImageName = imageName.toLowerCase();
+                  const trackedKeyName = lowerImageName === "key.jpeg" ? "key.jpeg" : "key.jpg";
+                  const currentProgress = getEdgeY2Progress(session, canonicalUsername);
+                  const nextProgress = Array.from(new Set([...currentProgress, trackedKeyName]));
+
+                  await completeMilestone("edge_y2_progress", {
+                    ...((session?.completed_milestones?.edge_y2_progress as Record<string, unknown> | undefined) ?? {}),
+                    [canonicalUsername]: nextProgress,
+                  });
+
+                  if (unlocked.includes(personalToken)) {
+                    setToast({ message: "You already found both of your Edge photos.", tone: "info", durationMs: 5000 });
+                  } else if (nextProgress.includes("key.jpg") && nextProgress.includes("key.jpeg")) {
+                    setActiveGallery(null);
+                    setShowPersonalEdgeToken(true);
+                    void unlockToken(personalToken);
+                    if (currentStage === 7) {
+                      void advanceStage(8);
+                    }
                   } else {
-                    setToast({ message: `Already found the key photo for ${subfolder.replace("-", " ")}!`, tone: "info", durationMs: 4000 });
+                    setToast({ message: `You found ${trackedKeyName}. Find the other Edge photo too.`, tone: "info", durationMs: 5000 });
                   }
+                } else if (isPlayerMatch(canonicalUsername, "sithu")) {
+                  setToast({ message: "Lol. Game master.", tone: "info", durationMs: 5000 });
                 } else {
-                  setToast({ message: "good job but your not the right person.", tone: "warning", durationMs: 4000 });
+                  setToast({ message: "Good job, but you are not part of the OG Edge group.", tone: "warning", durationMs: 5000 });
                 }
               }
               return;
@@ -391,7 +459,7 @@ export default function GameCanvas({ user }: Props) {
             if (activeGallery.startsWith("garage-")) {
               if (isKeyPhoto(imageName)) {
                 setToast({
-                  message: "Lol theres no hint here I just wanted you guys to see your chopped asses",
+                  message: "Lol, there is no hint here. I just wanted you guys to see your chopped asses.",
                   tone: "info",
                   durationMs: 6000,
                 });
@@ -403,33 +471,31 @@ export default function GameCanvas({ user }: Props) {
             }
             if (activeGallery.startsWith("nyc")) {
               if (!isKeyPhoto(imageName)) return;
-              const uName = username.toLowerCase();
-              if (uName === "sanjana" || uName === "sithu") {
+              if (isPlayerMatch(canonicalUsername, "sanjana") || isPlayerMatch(canonicalUsername, "sithu")) {
                 setActiveGallery(null);
                 setShowSanjanaToken(true);
                 await unlockToken("SANJANA_TOKEN");
                 await advanceStage(5);
               } else {
                 setToast({
-                  message: "good job you found the token. oh wait your not the right person. nvm",
+                  message: "Good job, you found the token, but you are not the right person.",
                   tone: "warning",
-                  durationMs: 4000,
+                  durationMs: 5000,
                 });
               }
               return;
             }
             if (currentStage === 8 && imageName.toLowerCase().startsWith("smoke")) {
-              const uName = username.toLowerCase();
-              if (uName === "arnav" || uName === "sithu") {
+              if (isPlayerMatch(canonicalUsername, "arnav") || isPlayerMatch(canonicalUsername, "sithu")) {
                 setActiveGallery(null);
                 setShowArnavToken(true);
                 await unlockToken("ARNAV_TOKEN");
                 await advanceStage(9);
               } else {
                 setToast({
-                  message: "good job you found the token. oh wait your not the right person. nvm",
+                  message: "Good job, you found the token, but you are not the right person.",
                   tone: "warning",
-                  durationMs: 4000,
+                  durationMs: 5000,
                 });
               }
               return;
@@ -444,13 +510,13 @@ export default function GameCanvas({ user }: Props) {
                   const newUnlocked = [...unlocked, yearToken];
                   
                   if (newUnlocked.includes("COLLEGIATE_Y2_TOKEN") && newUnlocked.includes("COLLEGIATE_Y3_TOKEN") && newUnlocked.includes("COLLEGIATE_Y4_TOKEN")) {
-                    setToast({ message: "All collegiate photos found!", tone: "success", durationMs: 6000 });
+                    setToast({ message: "All Collegiate photos found! Go talk to Milo.", tone: "success", durationMs: 7000 });
                     await advanceStage(10);
                   } else {
                     setToast({ message: `You found the key photo for Collegiate ${subfolder}!`, tone: "success", durationMs: 4000 });
                   }
                 } else {
-                  setToast({ message: `Already found the key photo for Collegiate ${subfolder}!`, tone: "info", durationMs: 4000 });
+                  setToast({ message: `Already found the key photo for Collegiate ${subfolder}!`, tone: "info", durationMs: 5000 });
                 }
               }
               return;
@@ -496,6 +562,88 @@ export default function GameCanvas({ user }: Props) {
         />
       )}
 
+      {showFinalNote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+          <div className="w-full max-w-3xl rounded-3xl border border-amber-300/20 bg-neutral-950/95 px-8 py-8 shadow-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.35em] text-amber-300 mb-3">A Note From Us</p>
+            <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-2 text-sm leading-7 text-gray-200">
+              <p>
+                If you are reading this, then you actually made it. That means you drove around, looked through all the chaos,
+                found the weird clues, and stuck with the game all the way to the end.
+              </p>
+              <p>
+                We made this because these memories matter to us. Some of them are funny, some are embarrassing, some are
+                unbelievably cursed, and some are the kind of moments that only make sense because all of you were there for them.
+              </p>
+              <p>
+                Thank you for taking the time to play through it together. The whole point was never just to win. It was to go back
+                through the places, the photos, the stories, and the people that made everything feel like ours in the first place.
+              </p>
+              <p>
+                Even when life changes, people move, and everything gets messier than we expected, we still get to keep this version
+                of all of us somewhere. Loud, dumb, sentimental, and very online.
+              </p>
+              <p>
+                We hope this made you laugh, made you remember something good, and maybe made you feel a little loved too.
+              </p>
+              <p>
+                Seriously, thank you for playing our ridiculous game.
+              </p>
+              <p className="text-amber-200">
+                Love,
+                <br />
+                Us
+              </p>
+            </div>
+            <div className="mt-8 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowFinalNote(false)}
+                className="rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-gray-300 transition hover:bg-white/10"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFinalNote(false);
+                  setShowFinalPhoto(true);
+                }}
+                className="rounded-full border border-amber-400/40 bg-amber-500/20 px-6 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/35"
+              >
+                See the final photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFinalPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-6">
+          <div className="w-full max-w-4xl rounded-3xl border border-white/10 bg-neutral-950/95 px-8 py-8 shadow-2xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.35em] text-emerald-300 mb-3">The End</p>
+            <div className="mb-6 overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
+              <img
+                src="/images/group_photo.JPG"
+                alt="Final group photo"
+                className="h-auto w-full object-cover"
+              />
+            </div>
+            <p className="mx-auto max-w-2xl text-base leading-7 text-gray-200">
+              Thanks for playing, for looking through the memories, and for making the stories worth saving in the first place.
+              We love you guys.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowFinalPhoto(false)}
+              className="mt-8 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-8 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/30"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {showAbcHint && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="relative w-[90%] max-w-lg rounded-3xl border border-amber-400/30 bg-neutral-950/95 px-10 py-10 shadow-2xl text-center">
@@ -535,7 +683,7 @@ export default function GameCanvas({ user }: Props) {
 
             {/* Photo */}
             <div className="mb-5 rounded-2xl overflow-hidden shadow-2xl border-4 border-amber-400/40 w-full max-w-xs aspect-square">
-              <img src="/images/token_screen/jake.jpg" alt="Jake" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+              <img src={getTokenScreenImage("jake")} alt="Jake" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
             </div>
 
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-amber-400 mb-2">
@@ -584,7 +732,7 @@ export default function GameCanvas({ user }: Props) {
             {/* Photo */}
             <div className="mb-5 rounded-2xl overflow-hidden shadow-2xl border-4 border-purple-400/40 w-full max-w-xs aspect-square">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/token_screen/riya.jpg" alt="Riya" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+              <img src={getTokenScreenImage("riya")} alt="Riya" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
             </div>
 
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-purple-400 mb-2">
@@ -630,7 +778,7 @@ export default function GameCanvas({ user }: Props) {
           {/* Card */}
           <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-sky-400/20"
             style={{ background: "linear-gradient(160deg, rgba(12,74,110,0.35) 0%, rgba(0,0,0,0.6) 100%)", backdropFilter: "blur(12px)" }}>
-            <img src="/images/token_screen/sanjana.jpg" alt="Sanjana" className="w-32 h-32 object-cover rounded-xl mb-4 border border-sky-400/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <img src={getTokenScreenImage("sanjana")} alt="Sanjana" className="w-32 h-32 object-cover rounded-xl mb-4 border border-sky-400/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
             <div className="text-6xl mb-3 animate-bounce select-none">🩼</div>
 
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-sky-400 mb-2">
@@ -673,7 +821,7 @@ export default function GameCanvas({ user }: Props) {
               <kbd className="mx-0.5 rounded border border-emerald-300/30 bg-emerald-950/40 px-1.5 py-0.5 font-mono text-xs text-emerald-100">
                 Enter
               </kbd>{" "}
-              to talk
+              {npcPromptText.replace("Press Enter ", "")}
             </p>
           </div>
         </div>
@@ -688,7 +836,7 @@ export default function GameCanvas({ user }: Props) {
           </div>
 
           <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-amber-300/30 bg-neutral-900/80 shadow-2xl backdrop-blur-xl">
-            <img src="/images/token_screen/arav.jpg" alt="Arav" className="w-32 h-32 object-cover rounded-xl mb-4 border border-amber-300/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <img src={getTokenScreenImage("arav")} alt="Arav" className="w-32 h-32 object-cover rounded-xl mb-4 border border-amber-300/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
             <div className="text-6xl mb-3 animate-bounce select-none">🏆</div>
 
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-amber-400 mb-2">
@@ -706,7 +854,7 @@ export default function GameCanvas({ user }: Props) {
               type="button"
               onClick={() => {
                 setShowAravToken(false);
-                setToast({ message: "Something appeared at VT! Ask milo about it for your next hint", tone: "info", durationMs: 6000 });
+                setToast({ message: "Something appeared at VT! Ask Milo about it for your next hint.", tone: "info", durationMs: 6000 });
               }}
               className="rounded-full border border-amber-400/40 bg-amber-500/20 px-14 py-4 text-lg font-bold text-amber-50 transition hover:bg-amber-500/40 hover:scale-105 active:scale-95"
             >
@@ -724,7 +872,7 @@ export default function GameCanvas({ user }: Props) {
           </div>
 
           <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-blue-300/30 bg-neutral-900/80 shadow-2xl backdrop-blur-xl">
-            <img src="/images/token_screen/arnav.jpg" alt="Arnav" className="w-32 h-32 object-cover rounded-xl mb-4 border border-blue-300/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <img src={getTokenScreenImage("arnav")} alt="Arnav" className="w-32 h-32 object-cover rounded-xl mb-4 border border-blue-300/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
             <div className="text-6xl mb-3 animate-bounce select-none">🏆</div>
 
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-blue-400 mb-2">
@@ -760,7 +908,7 @@ export default function GameCanvas({ user }: Props) {
           </div>
 
           <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-violet-500/30 bg-neutral-900/80 shadow-2xl backdrop-blur-xl">
-            <img src={`/images/token_screen/${username.toLowerCase()}.jpg`} alt="Token" className="w-32 h-32 object-cover rounded-xl mb-4 border border-violet-500/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <img src={getTokenScreenImage(username)} alt="Token" className="w-32 h-32 object-cover rounded-xl mb-4 border border-violet-500/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
             <div className="text-6xl mb-3 animate-bounce select-none">🗝️</div>
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-violet-400 mb-2">
               edge memories complete
@@ -898,7 +1046,7 @@ export default function GameCanvas({ user }: Props) {
               <kbd className="mx-0.5 rounded border border-gray-600 bg-gray-800 px-1.5 py-0.5 font-mono text-xs text-gray-200">
                 Enter
               </kbd>{" "}
-              to explore
+              {triggerPromptText.replace("Press Enter ", "")}
             </p>
           </div>
         </div>

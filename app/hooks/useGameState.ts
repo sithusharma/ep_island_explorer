@@ -12,7 +12,7 @@ export interface GameSession {
 }
 
 const SESSION_ID = "ep-island-2025";
-const FINAL_STAGE = 9;
+const FINAL_STAGE = 10;
 
 function normalizeStage(stage: number) {
   return Math.max(0, Math.min(FINAL_STAGE, stage));
@@ -31,21 +31,21 @@ export function getMiloHint(currentStage: number, unlockedTokens: string[] = [])
         return "The fallen hold the next key. Head to the graveyard and pay your respects — go through Edge to learn who they were.";
       return "Look for the floofiest of them all.";
     case 3:
-      return "One of us met the group later than usual, find the place we first met them";
+      return "One of us met the group later than usual. Find the place where we first met them.";
     case 4:
-      return "Don't trust the people you party with. They might break your leg";
+      return "Do not trust the people you party with. They might break your leg.";
     case 5:
-      return "If your going to talk to girls dont be too drunk you might not remember it";
+      return "If you are going to talk to girls, do not be too drunk or you might not remember it.";
     case 6:
-      return "Something appeared back on VT Island. Everyone go find your own parking spot garage and look through the photos. One ugly picture is hiding in there.";
+      return "Something appeared back on VT Island. Everyone should find their own parking spot and look through the photos. One ugly picture is hiding in there.";
     case 7:
-      return "all the future and current edge roomies need to team up and find key photo in each year. the album in edge will be split into four years and that will have four folders.";
+      return "The OG Edge group needs to find the two key photos in the Year 2 folder of the Edge album.";
     case 8:
-      return "Last but not least we have a certain pookie who loves to smoke. This pookie has to find the one picture in this game that he is smoking in. Good Luck!";
+      return "Last but not least, we have a certain pookie who loves to smoke. This pookie has to find the one picture in the game where he is smoking. Good luck!";
     case 9:
-      return "Now not forgetting us you guys need to find photo of us in every year of collegiate. Screw you guys this game took a long time and we need appreciation too!";
+      return "Now, do not forget about us. You guys need to find a photo of us in every year of Collegiate. This game took a long time, and we need some appreciation too!";
     case 10:
-      return "Thanks for playing my game!";
+      return "Thanks for playing the game guys! The game is now in artifact mode. Everything is unlocked and you can go through and look at the rest of the pictures. Hope you guys all had fun!";
     default:
       return "Welcome to VT Island! There is a prize we all have to work together to unlock. Explore the buildings and look at photos together.";
   }

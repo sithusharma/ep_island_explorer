@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../utils/supabase";
 import type { InventoryItem } from "../components/InventoryBar";
+import { getCanonicalPlayerName, getTokenOwner, isPlayerMatch } from "../lib/playerIdentity";
 
 interface InventorySessionRow {
   id: string;
@@ -104,8 +105,7 @@ function normalizeSessionRow(row: Record<string, unknown>): InventorySessionRow 
 }
 
 function sameCharacter(a?: string, b?: string) {
-  if (!a || !b) return false;
-  return normalizeKey(a) === normalizeKey(b);
+  return isPlayerMatch(a, b);
 }
 
 function formatTokenName(token: string) {
@@ -132,7 +132,7 @@ function getPlayerArtifacts(
 function toInventoryEntry(name: string, source: "artifact" | "token", currentCharacter?: string): InventoryEntry {
   const key = normalizeKey(name);
   const catalogEntry = ITEM_CATALOG[key];
-  const owner = catalogEntry?.owner ?? CHARACTER_ARTIFACT_OWNERS[key];
+  const owner = catalogEntry?.owner ?? CHARACTER_ARTIFACT_OWNERS[key] ?? getTokenOwner(name);
 
   if (source === "token" && key.endsWith("_token")) {
     const imagePath = "/images/token.png";
@@ -256,6 +256,7 @@ export function useInventory(currentCharacter?: string) {
 
   const activeArtifacts = getPlayerArtifacts(sessionRow?.completed_milestones, currentCharacter);
   const unlockedTokens = sessionRow?.unlocked_tokens ?? [];
+  const canonicalCurrentCharacter = getCanonicalPlayerName(currentCharacter);
 
   const items = useMemo(() => {
     const merged = new Map<string, InventoryEntry>();
@@ -273,12 +274,17 @@ export function useInventory(currentCharacter?: string) {
     }
 
     for (const token of unlockedTokens) {
+      const tokenOwner = getTokenOwner(token);
+      const isSharedGroupToken = normalizeKey(token) === "graveyard-done";
+      if (!isSharedGroupToken && (!tokenOwner || !isPlayerMatch(tokenOwner, canonicalCurrentCharacter))) {
+        continue;
+      }
       const entry = toInventoryEntry(token, "token", currentCharacter);
       merged.set(normalizeKey(token), entry);
     }
 
     return Array.from(merged.values());
-  }, [activeArtifacts, currentCharacter, unlockedTokens]);
+  }, [activeArtifacts, canonicalCurrentCharacter, currentCharacter, unlockedTokens]);
 
   return {
     items,

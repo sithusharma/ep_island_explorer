@@ -200,6 +200,14 @@ export const miamiMap: MapData = {
     road("rd-mainland-south", [CX, CY + 170, CX - 380, CY + 170]),
     road("rd-mainland-lower", [CX, CY + 410, CX - 380, CY + 410]),
     road("rd-airport", [CX, CY + 560, CX - 280, CY + 560]),
+    { id: "fake-id-marker", x: CX + 170, y: CY - 150, layer: 2, shapes: [
+      { type: "circle", x: 0, y: 0, r: 44, color: "rgba(255,255,255,0.16)" },
+      { type: "circle", x: 0, y: 0, r: 34, color: "rgba(30,136,229,0.24)", stroke: "rgba(255,255,255,0.65)", lineWidth: 3 },
+      { type: "text", x: 0, y: 1, text: "🪪", color: "#fff", font: "bold 28px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
+    ],
+    label: { text: "Fake ID", color: "#ffffff", font: "bold 14px sans-serif", offsetY: 54, shadow: { color: "#000", blur: 4 } },
+    solid: false,
+    },
     { id: "beach-props", x: 0, y: 0, layer: 2, shapes: [
       { type: "rect", x: CX + 540, y: CY - 280, w: 26, h: 10, color: "#ffffff", radius: 3 },
       { type: "rect", x: CX + 544, y: CY - 296, w: 18, h: 18, color: "#ff7043", radius: 3 },
@@ -216,12 +224,12 @@ export const miamiMap: MapData = {
     {
       id: "fake-id",
       name: "Fake ID",
-      mapCoordinates: { x: CX + 100, y: CY + 70 },
+      mapCoordinates: { x: CX + 170, y: CY - 150 },
       requiredPlayer: "all",
       stageRequired: 0,
       icon: "🪪",
       description: "A suspiciously convincing ID card. Now you can get into the ABC Store!",
-      hitbox: { w: 54, h: 54 },
+      hitbox: { w: 120, h: 120 },
       advanceStageTo: 1,
     }
   ],
