@@ -33,7 +33,6 @@ const BASE_ITEMS: InventoryEntry[] = [
 
 const CHARACTER_ARTIFACT_OWNERS: Record<string, string> = {
   "wheelchair": "Jake",
-  "fake id": "Sithu",
   "lord floof": "Sarah",
 };
 
@@ -48,7 +47,6 @@ const ITEM_CATALOG: Record<string, Omit<InventoryEntry, "source" | "isOwnedByCur
     name: "Fake ID",
     icon: "🪪",
     description: "A suspiciously convincing ID card.",
-    owner: "Sithu",
   },
   "lord floof": {
     name: "Lord Floof",
@@ -61,6 +59,13 @@ const ITEM_CATALOG: Record<string, Omit<InventoryEntry, "source" | "isOwnedByCur
     icon: "♿",
     description: "A character-specific mobility item.",
     owner: "Jake",
+  },
+  "condom": {
+    name: "Condom",
+    icon: "/images/condom.jpg",
+    enlargedIcon: "/images/condom.jpg",
+    description: "A suspiciously important condom.",
+    owner: "Riya",
   },
   "jake_token": {
     name: "JAKE_TOKEN",
@@ -103,6 +108,14 @@ function sameCharacter(a?: string, b?: string) {
   return normalizeKey(a) === normalizeKey(b);
 }
 
+function formatTokenName(token: string) {
+  return token
+    .replace(/_token$/i, "")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase()) + " Token";
+}
+
 function getPlayerArtifacts(
   milestones: Record<string, unknown> | null | undefined,
   currentCharacter?: string
@@ -120,8 +133,21 @@ function toInventoryEntry(name: string, source: "artifact" | "token", currentCha
   const key = normalizeKey(name);
   const catalogEntry = ITEM_CATALOG[key];
   const owner = catalogEntry?.owner ?? CHARACTER_ARTIFACT_OWNERS[key];
-  const baseName = catalogEntry?.name ?? name;
 
+  if (source === "token" && key.endsWith("_token")) {
+    const imagePath = "/images/token.png";
+    return {
+      name: formatTokenName(name),
+      icon: imagePath,
+      enlargedIcon: imagePath,
+      description: `${formatTokenName(name)} has been unlocked.`,
+      owner,
+      isOwnedByCurrentUser: sameCharacter(owner, currentCharacter),
+      source,
+    };
+  }
+
+  const baseName = catalogEntry?.name ?? name;
   return {
     name: baseName,
     icon: catalogEntry?.icon ?? "✨",
@@ -248,9 +274,7 @@ export function useInventory(currentCharacter?: string) {
 
     for (const token of unlockedTokens) {
       const entry = toInventoryEntry(token, "token", currentCharacter);
-      if (!entry.owner || sameCharacter(entry.owner, currentCharacter)) {
-        merged.set(normalizeKey(entry.name), entry);
-      }
+      merged.set(normalizeKey(token), entry);
     }
 
     return Array.from(merged.values());

@@ -23,7 +23,7 @@ function isImageIcon(icon: string) {
 export default function InventoryBar({ items, slots = 10 }: InventoryBarProps) {
   const [collapsed, setCollapsed] = useState(true);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const totalSlots = Math.max(5, Math.min(5, slots));
+  const totalSlots = Math.max(5, Math.min(10, slots));
   const visibleItems = items.slice(0, totalSlots);
   const slotItems = Array.from({ length: totalSlots }, (_, index) => visibleItems[index] ?? null);
 

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-const FALLEN = ["HUMSI", "VEDANT", "LOVEY", "VED"];
+const FALLEN = ["HUMSI", "VEDANT", "LOVEY", "VED", "KASHISH", "SID", "ROHITH", "RIYA"];
 
 interface Props {
   onClose: () => void;

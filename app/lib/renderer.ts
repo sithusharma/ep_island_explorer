@@ -198,16 +198,29 @@ function drawArtifact(ctx: CanvasRenderingContext2D, artifact: Artifact) {
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.fillStyle = "#111";
-  ctx.font = "26px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(icon, 0, 1);
-
-  ctx.fillStyle = "#111";
-  ctx.font = "bold 11px sans-serif";
-  ctx.textBaseline = "top";
-  ctx.fillText(artifact.name, 0, 28);
+  if (icon.startsWith("/")) {
+    const img = getImage(icon);
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, -15, -15, 30, 30);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "#111";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("?", 0, 1);
+    }
+  } else {
+    ctx.fillStyle = "#111";
+    ctx.font = "26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(icon, 0, 1);
+  }
 
   ctx.restore();
 }

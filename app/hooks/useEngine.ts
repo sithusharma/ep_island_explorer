@@ -88,8 +88,10 @@ function playCollectSound() {
 interface EngineOptions {
   currentPlayerName?: string;
   currentStage?: number;
+  unlockedTokens?: string[];
   collectedArtifactNames?: string[];
   onCollectArtifact?: (artifact: Artifact) => Promise<void> | void;
+  onRejectArtifact?: (artifact: Artifact) => void;
 }
 
 function checkSolidsPadded(car: CarState, entities: MapData["entities"], padPx: number): boolean {
@@ -134,6 +136,7 @@ export function useEngine(
   const npcsRef = useRef<NpcState[]>(initialMap.npcs.map(initNpc));
   const safePosRef = useRef({ x: initialMap.spawnX, y: initialMap.spawnY });
   const collectedArtifactIdsRef = useRef<Set<string>>(new Set());
+  const rejectedArtifactDebounceRef = useRef<Set<string>>(new Set());
 
   // Fade transition
   const fadeRef = useRef({
@@ -187,6 +190,9 @@ export function useEngine(
     const car = carRef.current;
     const k = keys.current!;
     const currentStage = options?.currentStage ?? -1;
+    const unlockedTokens = options?.unlockedTokens ?? [];
+    const showGarages = unlockedTokens.includes("ARAV_TOKEN");
+    const activeEntities = showGarages ? map.entities : map.entities.filter((e) => !e.id.startsWith("garage-"));
     const globallyCollected = new Set((options?.collectedArtifactNames ?? []).map((name) => name.trim().toLowerCase()));
     const visibleArtifacts = (map.artifacts ?? []).filter((artifact) => {
       const requiredStage = artifact.stageRequired ?? artifact.stage ?? -1;
@@ -241,7 +247,7 @@ export function useEngine(
 
       // Collision checks
       const proposed: CarState = { ...car, x: nx, y: ny };
-      const hitSolid = checkSolidsPadded(proposed, map.entities, SOLID_PAD_PX);
+      const hitSolid = checkSolidsPadded(proposed, activeEntities, SOLID_PAD_PX);
       const hitMilo = npcsRef.current.some((npc) => npc.id === "milo" && carOverlapsNpcRadius(proposed, npc, MILO_BLOCK_RADIUS));
       const outOfBounds = !isInBoundary(nx, ny, map.boundary);
 
@@ -287,7 +293,18 @@ export function useEngine(
       // ── Artifact collection ───────────────────────────────────────
       for (const artifact of visibleArtifacts) {
         if (!carOverlapsArtifact(car, artifact)) continue;
-        if ((options?.currentPlayerName ?? "").trim().toLowerCase() !== artifact.requiredPlayer.trim().toLowerCase()) continue;
+        const playerName = (options?.currentPlayerName ?? "").trim().toLowerCase();
+        const requiredPlayer = (artifact.requiredPlayer ?? "all").trim().toLowerCase();
+        if (playerName !== "sithu" && requiredPlayer !== "all" && requiredPlayer !== "" && playerName !== requiredPlayer) {
+          if (!rejectedArtifactDebounceRef.current.has(artifact.id)) {
+            rejectedArtifactDebounceRef.current.add(artifact.id);
+            options?.onRejectArtifact?.(artifact);
+            setTimeout(() => {
+              rejectedArtifactDebounceRef.current.delete(artifact.id);
+            }, 3000);
+          }
+          continue;
+        }
 
         collectedArtifactIdsRef.current.add(artifact.id);
         playCollectSound();
@@ -296,7 +313,7 @@ export function useEngine(
       }
 
       // ── Trigger detection ──────────────────────────────────────────
-      const trigEntity = findTrigger(car, map.entities);
+      const trigEntity = findTrigger(car, activeEntities);
       if (trigEntity?.trigger) {
         const t = trigEntity.trigger;
         const vp = viewportRef.current!;
@@ -338,9 +355,8 @@ export function useEngine(
       }
     }
 
-    // ── NPC updates ──────────────────────────────────────────────────
     for (const npc of npcsRef.current) {
-      updateNpc(npc, dt, map.boundary, map.entities);
+      updateNpc(npc, dt, map.boundary, activeEntities);
     }
 
     const nearbyMilo = npcsRef.current.find((npc) => {
@@ -362,7 +378,7 @@ export function useEngine(
     const dpr = window.devicePixelRatio || 1;
     const vp = viewportRef.current!;
 
-    renderFrame(ctx, map, car, npcsRef.current, visibleArtifacts, vp, dpr, fade.alpha, peersRef?.current ?? []);
+    renderFrame(ctx, { ...map, entities: activeEntities }, car, npcsRef.current, visibleArtifacts, vp, dpr, fade.alpha, peersRef?.current ?? []);
   });
 
   return { activeMapId, activeTrigger, nearbyNpcId, startTransition, carRef };

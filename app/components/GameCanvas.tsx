@@ -18,14 +18,14 @@ import MemoryGallery from "./MemoryGallery";
 // ── Icon / accent helpers ─────────────────────────────────────────────────────
 
 function triggerIcon(type: string, name: string): string {
-  if (type === "jukebox")   return "♫";
+  if (type === "jukebox") return "♫";
   if (type === "graveyard") return "🪦";
   if (name.toLowerCase().includes("stadium") || name.toLowerCase().includes("coliseum")) return "🏟";
   if (name.toLowerCase().includes("pizza") || name.toLowerCase().includes("wings")) return "🍕";
   if (name.toLowerCase().includes("bar") || name.toLowerCase().includes("house") || name.toLowerCase().includes("burg")) return "🍺";
   if (name.toLowerCase().includes("wild")) return "🌿";
   if (name.toLowerCase().includes("dorm")) return "🛏";
-  if (name.toLowerCase().includes("apt") || name.toLowerCase().includes("apartment") || name.toLowerCase().includes("hub")) return "🏠";
+  if (name.toLowerCase().includes("apt") || name.toLowerCase().includes("apartment") || name.toLowerCase().includes("hub") || name.toLowerCase().includes("airbnb")) return "🏠";
   if (name.toLowerCase().includes("store")) return "🛒";
   if (name.toLowerCase().includes("beach") || name.toLowerCase().includes("bay")) return "🏖";
   if (name.toLowerCase().includes("forest") || name.toLowerCase().includes("yunque")) return "🌲";
@@ -34,7 +34,7 @@ function triggerIcon(type: string, name: string): string {
 }
 
 function triggerAccent(type: string): string {
-  if (type === "jukebox")   return "border-purple-500/40 text-purple-400";
+  if (type === "jukebox") return "border-purple-500/40 text-purple-400";
   if (type === "graveyard") return "border-gray-600/40 text-gray-400";
   return "border-white/20 text-white";
 }
@@ -72,6 +72,11 @@ function playMiloMeow() {
   };
 }
 
+function isKeyPhoto(imageName: string) {
+  const lower = imageName.toLowerCase();
+  return lower === "key.jpg" || lower === "key.jpeg" || lower === "key.png";
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -85,19 +90,24 @@ interface ToastState {
 }
 
 export default function GameCanvas({ user }: Props) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef({ w: 0, h: 0 });
   const keys = useInput();
 
   const [activeGallery, setActiveGallery] = useState<string | null>(null);
-  const [showJukebox,   setShowJukebox]   = useState(false);
+  const [showJukebox, setShowJukebox] = useState(false);
   const [showGraveyard, setShowGraveyard] = useState(false);
-  const [isDialogOpen,  setIsDialogOpen]  = useState(false);
-  const [showAbcHint,    setShowAbcHint]    = useState(false);
-  const [showJakeToken,  setShowJakeToken]  = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showAbcHint, setShowAbcHint] = useState(false);
+  const [showJakeToken, setShowJakeToken] = useState(false);
+  const [showRiyaToken, setShowRiyaToken] = useState(false);
+  const [showSanjanaToken, setShowSanjanaToken] = useState(false);
+  const [showAravToken, setShowAravToken] = useState(false);
+  const [showArnavToken, setShowArnavToken] = useState(false);
+  const [showPersonalEdgeToken, setShowPersonalEdgeToken] = useState(false);
   const [showMiloConfirm, setShowMiloConfirm] = useState(false);
-  const [showFloofToken,  setShowFloofToken]  = useState(false);
-  const [toast,          setToast]          = useState<ToastState | null>(null);
+  const [showFloofToken, setShowFloofToken] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   // ── Canvas sizing ──────────────────────────────────────────────────────────
 
@@ -107,9 +117,9 @@ export default function GameCanvas({ user }: Props) {
     const dpr = window.devicePixelRatio || 1;
     const w = window.innerWidth;
     const h = window.innerHeight;
-    cvs.width  = w * dpr;
+    cvs.width = w * dpr;
     cvs.height = h * dpr;
-    cvs.style.width  = `${w}px`;
+    cvs.style.width = `${w}px`;
     cvs.style.height = `${h}px`;
     viewportRef.current = { w, h };
   }, []);
@@ -145,7 +155,7 @@ export default function GameCanvas({ user }: Props) {
   } = useInventory(username);
 
   const { currentStage, isArtifact, advanceStage, unlockToken, session } = useGameState();
-  const hasFakeId     = activeArtifacts.some((a) => a.trim().toLowerCase() === "fake id");
+  const hasFakeId = activeArtifacts.some((a) => a.trim().toLowerCase() === "fake id");
   const hasWheelchair = activeArtifacts.some((a) => a.trim().toLowerCase() === "wheelchair");
 
   const { activeTrigger, activeMapId, nearbyNpcId, carRef } = useEngine(
@@ -156,12 +166,28 @@ export default function GameCanvas({ user }: Props) {
     {
       currentPlayerName: username,
       currentStage,
+      unlockedTokens: session?.unlocked_tokens ?? [],
       collectedArtifactNames: activeArtifacts,
       onCollectArtifact: async (artifact) => {
         await collectArtifact(artifact.name);
         if (artifact.name === "Lord Floof") setShowFloofToken(true);
+        if (artifact.name === "Beer") {
+          setToast({ message: "oh boy i hope you don't go out now. Or even worse, try and talk to some girl.", tone: "info", durationMs: 5000 });
+        }
+        if (artifact.name === "Fake ID") {
+          setToast({ message: "you got a fake id!", tone: "success", durationMs: 5000 });
+        }
+        if (artifact.name === "Wheelchair") {
+          setToast({ message: "oh man this guy is so gone we have to go back to the hotel now", tone: "warning", durationMs: 5000 });
+        }
+        if (artifact.name === "Condom") {
+          setToast({ message: "oh man please dont use this especially not where we are sleeping", tone: "warning", durationMs: 5000 });
+        }
         if (artifact.unlockToken) await unlockToken(artifact.unlockToken);
         if (artifact.advanceStageTo !== undefined) await advanceStage(artifact.advanceStageTo);
+      },
+      onRejectArtifact: (artifact) => {
+        setToast({ message: "im sorry you cant pick this up", tone: "warning", durationMs: 4000 });
       },
     }
   );
@@ -203,12 +229,33 @@ export default function GameCanvas({ user }: Props) {
       }
       if (!activeTrigger) return;
 
-      // Jake delivers wheelchair to RIU
+      if (activeTrigger.entityId === "nightlife") {
+        if (currentStage === 5 && activeArtifacts.some(a => a.trim().toLowerCase() === "beer")) {
+          setShowAravToken(true);
+          void unlockToken("ARAV_TOKEN");
+          void advanceStage(6);
+          return;
+        }
+      }
+
       if (activeTrigger.entityId === "riu" && hasWheelchair && currentStage < 2) {
         setShowJakeToken(true);
         void unlockToken("JAKE_TOKEN");
         void advanceStage(2);
         return;
+      }
+
+      if (activeTrigger.entityId === "scary-airbnb") {
+        if (currentStage < 4) {
+          if (activeArtifacts.some(a => a.trim().toLowerCase() === "condom")) {
+            setShowRiyaToken(true);
+            void unlockToken("RIYA_TOKEN");
+            void advanceStage(4);
+          } else {
+            setToast({ message: "The AirBnB is locked.", tone: "warning" });
+          }
+          return;
+        }
       }
 
       if (activeTrigger.entityId === "abc-store" && !hasFakeId) {
@@ -219,7 +266,7 @@ export default function GameCanvas({ user }: Props) {
         setShowAbcHint(true);
         return;
       }
-      if (activeTrigger.type === "jukebox")   { setShowJukebox(true);   return; }
+      if (activeTrigger.type === "jukebox") { setShowJukebox(true); return; }
       if (activeTrigger.type === "graveyard") { setShowGraveyard(true); return; }
       setActiveGallery(activeTrigger.entityId);
     };
@@ -241,13 +288,29 @@ export default function GameCanvas({ user }: Props) {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
+  const hasAll4Edge = ["EDGE_YEAR_1_TOKEN", "EDGE_YEAR_2_TOKEN", "EDGE_YEAR_3_TOKEN", "EDGE_YEAR_4_TOKEN"].every(y => (session?.unlocked_tokens ?? []).includes(y));
+  
+  useEffect(() => {
+    const isEdgePerson = ["suraj", "sarthak", "shrey", "ani", "sithu"].includes(username.toLowerCase());
+    if (hasAll4Edge && currentStage === 7 && isEdgePerson) {
+      const personalToken = `${username.toUpperCase()}_EDGE_TOKEN`;
+      if (!(session?.unlocked_tokens ?? []).includes(personalToken) && !showPersonalEdgeToken) {
+        setShowPersonalEdgeToken(true);
+        void unlockToken(personalToken);
+        void advanceStage(8);
+      }
+    }
+  }, [hasAll4Edge, currentStage, session, username, unlockToken, advanceStage, showPersonalEdgeToken]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   const graveyardDone = (session?.unlocked_tokens ?? []).includes("graveyard-done");
-  const showPrompt    = activeTrigger !== null && !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm;
-  const showNpcPrompt = nearbyNpcId === "milo"  && !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm;
+  const activePromptBlockers = !activeGallery && !showJukebox && !showGraveyard && !isDialogOpen && !showAbcHint && !showJakeToken && !showMiloConfirm && !showRiyaToken && !showSanjanaToken && !showAravToken && !showArnavToken && !showPersonalEdgeToken && !showFloofToken;
+  const showPrompt = activeTrigger !== null && activePromptBlockers;
+  const activeNpcLabel = nearbyNpcId === "milo" ? "🐈 Milo" : null;
+  const showNpcPrompt = activeNpcLabel !== null && activePromptBlockers;
   const accent = activeTrigger ? triggerAccent(activeTrigger.type) : "";
-  const icon   = activeTrigger ? triggerIcon(activeTrigger.type, activeTrigger.name) : "";
+  const icon = activeTrigger ? triggerIcon(activeTrigger.type, activeTrigger.name) : "";
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
@@ -261,7 +324,7 @@ export default function GameCanvas({ user }: Props) {
         </div>
       )}
 
-      <InventoryBar items={inventoryItems} slots={5} />
+      <InventoryBar items={inventoryItems} slots={8} />
 
       {/* Logout */}
       <button
@@ -293,18 +356,103 @@ export default function GameCanvas({ user }: Props) {
       {activeGallery && (
         <MemoryGallery
           locationId={activeGallery}
+          mapId={activeMapId}
           onClose={() => setActiveGallery(null)}
-          onImageSelect={async (imageName) => {
-            if (activeGallery === "library") {
-              if (imageName.toLowerCase() !== "key.jpg") return;
-              if (hasFakeId) return;
-              await collectArtifact("Fake ID");
-              await advanceStage(1);
-              setToast({
-                message: "You found the Fake IDs! The ABC Store is now unlocked. Ask Milo what's next.",
-                tone: "success",
-                durationMs: 8000,
-              });
+          onImageSelect={async (imageName, subfolder) => {
+            if (activeGallery === "edges-apt" && subfolder) {
+              if (isKeyPhoto(imageName)) {
+                const uName = username.toLowerCase();
+                if (["suraj", "sarthak", "shrey", "ani", "sithu"].includes(uName)) {
+                  const yearToken = `EDGE_${subfolder.toUpperCase().replace("-", "_")}_TOKEN`;
+                  const unlocked = session?.unlocked_tokens ?? [];
+                  if (!unlocked.includes(yearToken)) {
+                    void unlockToken(yearToken);
+                    setToast({ message: `You found the key photo for ${subfolder.replace("-", " ")}!`, tone: "success", durationMs: 4000 });
+                  } else {
+                    setToast({ message: `Already found the key photo for ${subfolder.replace("-", " ")}!`, tone: "info", durationMs: 4000 });
+                  }
+                } else {
+                  setToast({ message: "good job but your not the right person.", tone: "warning", durationMs: 4000 });
+                }
+              }
+              return;
+            }
+
+            if (activeGallery === "abc-store") {
+              if (isKeyPhoto(imageName)) {
+                setToast({
+                  message: "You found the photo! I wonder where this photo took place at?",
+                  tone: "info",
+                  durationMs: 6000,
+                });
+              }
+              return;
+            }
+            if (activeGallery.startsWith("garage-")) {
+              if (isKeyPhoto(imageName)) {
+                setToast({
+                  message: "Lol theres no hint here I just wanted you guys to see your chopped asses",
+                  tone: "info",
+                  durationMs: 6000,
+                });
+                if (currentStage === 6) {
+                  void advanceStage(7);
+                }
+              }
+              return;
+            }
+            if (activeGallery.startsWith("nyc")) {
+              if (!isKeyPhoto(imageName)) return;
+              const uName = username.toLowerCase();
+              if (uName === "sanjana" || uName === "sithu") {
+                setActiveGallery(null);
+                setShowSanjanaToken(true);
+                await unlockToken("SANJANA_TOKEN");
+                await advanceStage(5);
+              } else {
+                setToast({
+                  message: "good job you found the token. oh wait your not the right person. nvm",
+                  tone: "warning",
+                  durationMs: 4000,
+                });
+              }
+              return;
+            }
+            if (currentStage === 8 && imageName.toLowerCase().startsWith("smoke")) {
+              const uName = username.toLowerCase();
+              if (uName === "arnav" || uName === "sithu") {
+                setActiveGallery(null);
+                setShowArnavToken(true);
+                await unlockToken("ARNAV_TOKEN");
+                await advanceStage(9);
+              } else {
+                setToast({
+                  message: "good job you found the token. oh wait your not the right person. nvm",
+                  tone: "warning",
+                  durationMs: 4000,
+                });
+              }
+              return;
+            }
+            if (currentStage === 9 && activeGallery === "collegiate-apt" && subfolder) {
+              if (isKeyPhoto(imageName)) {
+                const yearToken = `COLLEGIATE_${subfolder.toUpperCase()}_TOKEN`;
+                const unlocked = session?.unlocked_tokens ?? [];
+                
+                if (!unlocked.includes(yearToken)) {
+                  await unlockToken(yearToken);
+                  const newUnlocked = [...unlocked, yearToken];
+                  
+                  if (newUnlocked.includes("COLLEGIATE_Y2_TOKEN") && newUnlocked.includes("COLLEGIATE_Y3_TOKEN") && newUnlocked.includes("COLLEGIATE_Y4_TOKEN")) {
+                    setToast({ message: "All collegiate photos found!", tone: "success", durationMs: 6000 });
+                    await advanceStage(10);
+                  } else {
+                    setToast({ message: `You found the key photo for Collegiate ${subfolder}!`, tone: "success", durationMs: 4000 });
+                  }
+                } else {
+                  setToast({ message: `Already found the key photo for Collegiate ${subfolder}!`, tone: "info", durationMs: 4000 });
+                }
+              }
               return;
             }
           }}
@@ -387,8 +535,7 @@ export default function GameCanvas({ user }: Props) {
 
             {/* Photo */}
             <div className="mb-5 rounded-2xl overflow-hidden shadow-2xl border-4 border-amber-400/40 w-full max-w-xs aspect-square">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/jake.jpg" alt="Jake" className="w-full h-full object-cover" />
+              <img src="/images/token_screen/jake.jpg" alt="Jake" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
             </div>
 
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-amber-400 mb-2">
@@ -404,14 +551,110 @@ export default function GameCanvas({ user }: Props) {
               Now stop drinking so much.
             </p>
 
-            <div className="rounded-2xl border border-amber-400/20 bg-amber-950/30 px-8 py-3 mb-8">
-              <p className="text-2xl font-black text-amber-300 tracking-widest">JAKE_TOKEN</p>
-            </div>
+
 
             <button
               type="button"
-              onClick={() => setShowJakeToken(false)}
+              onClick={() => {
+                setShowJakeToken(false);
+                setToast({ message: "Milo will give you the next hint.", tone: "info", durationMs: 6000 });
+              }}
               className="rounded-full border border-amber-400/50 bg-amber-500/20 px-14 py-4 text-lg font-bold text-amber-100 transition hover:bg-amber-500/40 hover:scale-105 active:scale-95"
+            >
+              Claim ✦
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showRiyaToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+          style={{ background: "radial-gradient(ellipse at center, #2e004f 0%, #000 70%)" }}>
+
+          {/* Ambient glow rings */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[600px] h-[600px] rounded-full opacity-20 animate-ping"
+              style={{ background: "radial-gradient(circle, #a855f7 0%, transparent 70%)" }} />
+          </div>
+
+          {/* Card */}
+          <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-purple-400/20"
+            style={{ background: "linear-gradient(160deg, rgba(88,28,135,0.35) 0%, rgba(0,0,0,0.6) 100%)", backdropFilter: "blur(12px)" }}>
+
+            {/* Photo */}
+            <div className="mb-5 rounded-2xl overflow-hidden shadow-2xl border-4 border-purple-400/40 w-full max-w-xs aspect-square">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/token_screen/riya.jpg" alt="Riya" className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+            </div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.4em] text-purple-400 mb-2">
+              Token Unlocked
+            </p>
+
+            <h1 className="text-5xl font-black text-white mb-2 tracking-tight"
+              style={{ textShadow: "0 0 40px rgba(168,85,247,0.6)" }}>
+              Congrats Riya! 🏆
+            </h1>
+
+            <p className="text-lg text-purple-200 font-semibold mb-5">
+              man you guys are nasty
+            </p>
+
+
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowRiyaToken(false);
+                setActiveGallery("scary-airbnb");
+                setToast({ message: "Milo will give you the next hint.", tone: "info", durationMs: 6000 });
+              }}
+              className="rounded-full border border-purple-400/50 bg-purple-500/20 px-14 py-4 text-lg font-bold text-purple-100 transition hover:bg-purple-500/40 hover:scale-105 active:scale-95"
+            >
+              Claim ✦
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showSanjanaToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+          style={{ background: "radial-gradient(ellipse at center, #0a1f2c 0%, #000 70%)" }}>
+
+          {/* Ambient glow rings */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[600px] h-[600px] rounded-full opacity-20 animate-ping"
+              style={{ background: "radial-gradient(circle, #0ea5e9 0%, transparent 70%)" }} />
+          </div>
+
+          {/* Card */}
+          <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-sky-400/20"
+            style={{ background: "linear-gradient(160deg, rgba(12,74,110,0.35) 0%, rgba(0,0,0,0.6) 100%)", backdropFilter: "blur(12px)" }}>
+            <img src="/images/token_screen/sanjana.jpg" alt="Sanjana" className="w-32 h-32 object-cover rounded-xl mb-4 border border-sky-400/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <div className="text-6xl mb-3 animate-bounce select-none">🩼</div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.4em] text-sky-400 mb-2">
+              Token Unlocked
+            </p>
+
+            <h1 className="text-5xl font-black text-white mb-2 tracking-tight"
+              style={{ textShadow: "0 0 40px rgba(14,165,233,0.6)" }}>
+              Congrats Sanjana! 🏆
+            </h1>
+
+            <p className="text-lg text-sky-200 font-semibold mb-5">
+              Hope the crutches were fun!
+            </p>
+
+
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowSanjanaToken(false);
+                setToast({ message: "Milo will give you the next hint.", tone: "info", durationMs: 6000 });
+              }}
+              className="rounded-full border border-sky-400/50 bg-sky-500/20 px-14 py-4 text-lg font-bold text-sky-100 transition hover:bg-sky-500/40 hover:scale-105 active:scale-95"
             >
               Claim ✦
             </button>
@@ -423,8 +666,7 @@ export default function GameCanvas({ user }: Props) {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6 z-20">
           <div className="rounded-2xl border border-emerald-400/30 bg-black/85 px-7 py-3 text-center shadow-2xl backdrop-blur-md max-w-sm w-[92%]">
             <p className="text-lg font-bold text-white">
-              <span className="mr-2">🐈</span>
-              Milo
+              {activeNpcLabel}
             </p>
             <p className="mt-1 text-sm text-emerald-200">
               Press{" "}
@@ -437,6 +679,111 @@ export default function GameCanvas({ user }: Props) {
         </div>
       )}
 
+      {showAravToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/60 backdrop-blur-md">
+
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[600px] h-[600px] rounded-full opacity-30 animate-ping"
+              style={{ background: "radial-gradient(circle, #fcd34d 0%, transparent 70%)" }} />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-amber-300/30 bg-neutral-900/80 shadow-2xl backdrop-blur-xl">
+            <img src="/images/token_screen/arav.jpg" alt="Arav" className="w-32 h-32 object-cover rounded-xl mb-4 border border-amber-300/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <div className="text-6xl mb-3 animate-bounce select-none">🏆</div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.4em] text-amber-400 mb-2">
+              maybe next time
+            </p>
+
+            <h1 className="text-5xl font-black text-white mb-2 tracking-tight"
+              style={{ textShadow: "0 0 30px rgba(251,191,36,0.4)" }}>
+              Congrats Arav! 🏆
+            </h1>
+
+
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowAravToken(false);
+                setToast({ message: "Something appeared at VT! Ask milo about it for your next hint", tone: "info", durationMs: 6000 });
+              }}
+              className="rounded-full border border-amber-400/40 bg-amber-500/20 px-14 py-4 text-lg font-bold text-amber-50 transition hover:bg-amber-500/40 hover:scale-105 active:scale-95"
+            >
+              Claim ✦
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showArnavToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/60 backdrop-blur-md">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[600px] h-[600px] rounded-full opacity-30 animate-ping"
+              style={{ background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)" }} />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-blue-300/30 bg-neutral-900/80 shadow-2xl backdrop-blur-xl">
+            <img src="/images/token_screen/arnav.jpg" alt="Arnav" className="w-32 h-32 object-cover rounded-xl mb-4 border border-blue-300/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <div className="text-6xl mb-3 animate-bounce select-none">🏆</div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.4em] text-blue-400 mb-2">
+              Smoke Token Unlocked
+            </p>
+
+            <h1 className="text-5xl font-black text-white mb-2 tracking-tight"
+              style={{ textShadow: "0 0 30px rgba(59,130,246,0.4)" }}>
+              Congrats Arnav! 🏆
+            </h1>
+
+
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowArnavToken(false);
+                setToast({ message: "Milo will give you the next hint.", tone: "info", durationMs: 6000 });
+              }}
+              className="rounded-full border border-blue-400/40 bg-blue-500/20 px-14 py-4 text-lg font-bold text-blue-50 transition hover:bg-blue-500/40 hover:scale-105 active:scale-95"
+            >
+              Claim ✦
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showPersonalEdgeToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/80 backdrop-blur-md">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[600px] h-[600px] rounded-full opacity-40 animate-pulse"
+              style={{ background: "radial-gradient(circle, #8b5cf6 0%, transparent 70%)" }} />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center text-center px-12 py-10 max-w-2xl w-[92%] rounded-3xl border border-violet-500/30 bg-neutral-900/80 shadow-2xl backdrop-blur-xl">
+            <img src={`/images/token_screen/${username.toLowerCase()}.jpg`} alt="Token" className="w-32 h-32 object-cover rounded-xl mb-4 border border-violet-500/30 shadow-xl" onError={(e) => e.currentTarget.style.display = 'none'} />
+            <div className="text-6xl mb-3 animate-bounce select-none">🗝️</div>
+            <p className="text-xs font-bold uppercase tracking-[0.4em] text-violet-400 mb-2">
+              edge memories complete
+            </p>
+            <h1 className="text-5xl font-black text-white mb-2 tracking-tight capitalize"
+              style={{ textShadow: "0 0 30px rgba(139,92,246,0.4)" }}>
+              Congrats {username}! 🏆
+            </h1>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowPersonalEdgeToken(false);
+                setToast({ message: "Milo will give you the next hint.", tone: "info", durationMs: 6000 });
+              }}
+              className="rounded-full border border-violet-500/40 bg-violet-600/20 px-14 py-4 text-lg font-bold text-violet-50 transition hover:bg-violet-600/40 hover:scale-105 active:scale-95"
+            >
+              Claim ✦
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Lord Floof — theatrical token reveal */}
       {showFloofToken && (
         <div
@@ -444,13 +791,13 @@ export default function GameCanvas({ user }: Props) {
           style={{ background: "linear-gradient(135deg, #ff4fa3 0%, #c471ed 30%, #7b52f6 60%, #12c2e9 100%)" }}
         >
           {/* Floating sparkles */}
-          {["✦","✧","✦","✧","✦","✧","✦","✧"].map((s, i) => (
+          {["✦", "✧", "✦", "✧", "✦", "✧", "✦", "✧"].map((s, i) => (
             <span
               key={i}
               className="pointer-events-none absolute text-white/40 animate-pulse select-none"
               style={{
-                top:  `${10 + (i * 11) % 80}%`,
-                left: `${5  + (i * 13) % 90}%`,
+                top: `${10 + (i * 11) % 80}%`,
+                left: `${5 + (i * 13) % 90}%`,
                 fontSize: `${14 + (i % 3) * 8}px`,
                 animationDelay: `${i * 0.3}s`,
               }}
@@ -492,13 +839,14 @@ export default function GameCanvas({ user }: Props) {
               Why you so weird though 😭
             </p>
 
-            <div className="rounded-2xl border border-white/20 bg-white/10 px-8 py-4 mb-8">
-              <p className="text-2xl font-black tracking-widest text-white">SARAH_TOKEN</p>
-            </div>
+
 
             <button
               type="button"
-              onClick={() => setShowFloofToken(false)}
+              onClick={() => {
+                setShowFloofToken(false);
+                setToast({ message: "Milo will give you the next hint.", tone: "info", durationMs: 6000 });
+              }}
               className="rounded-full px-14 py-4 text-lg font-black text-white transition hover:scale-105 active:scale-95"
               style={{ background: "linear-gradient(90deg, #ff4fa3, #c471ed, #7b52f6)", boxShadow: "0 0 30px rgba(196,113,237,0.6)" }}
             >
@@ -509,7 +857,7 @@ export default function GameCanvas({ user }: Props) {
       )}
 
       {toast && (
-        <div className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 top-20 z-[100] flex justify-center px-4">
           <div
             className={[
               "max-w-xl rounded-2xl border px-5 py-3 text-sm font-semibold shadow-2xl backdrop-blur-md",
@@ -530,7 +878,7 @@ export default function GameCanvas({ user }: Props) {
           alreadyDone={graveyardDone}
           onComplete={async () => {
             await unlockToken("graveyard-done");
-            setToast({ message: "The fallen have been honored. Ask Milo what's next.", tone: "success", durationMs: 6000 });
+            setToast({ message: "The fallen have been honored.", tone: "success", durationMs: 6000 });
           }}
         />
       )}

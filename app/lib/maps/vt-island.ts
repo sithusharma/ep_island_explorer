@@ -229,6 +229,7 @@ const dragonsTooth: Entity = {
 };
 
 const abcStore = bldg("abc-store", 1200, 1450, 90, 60, "#6a1b9a", "ABC Store");
+const smokeShop = bldg("smoke-shop", 1320, 1450, 110, 60, "#2e7d32", "Smoke Shop");
 
 const graveyard: Entity = {
   id: "graveyard", x: 1450, y: 1100, layer: 2,
@@ -538,7 +539,7 @@ export const vtIsland: MapData = {
     ocean, island, drillfield,
     cascades, dragonsTooth,
     ...roads,
-    theSpot, abcStore,
+    theSpot, abcStore, smokeShop,
     theHub, alight, collegiate, edges,
     library,
     tots, hokieHouse, bennys,
@@ -552,5 +553,17 @@ export const vtIsland: MapData = {
   items: [],
   npcs: [
     { id: "milo", name: "Milo", spawnX: CX, spawnY: CY - 95, speed: 0, wanderRadius: 0, spriteSrc: "/images/milo.png", spriteScale: 1.28, bodyColor: "#1a1a1a", accentColor: "#ffffff" },
+  ],
+  artifacts: [
+    {
+      id: "weed",
+      name: "Weed",
+      mapCoordinates: { x: 1320, y: 1500 },
+      requiredPlayer: "all",
+      stageRequired: 6,
+      icon: "🌿",
+      description: "Some good stuff.",
+      hitbox: { w: 64, h: 64 },
+    }
   ],
 };

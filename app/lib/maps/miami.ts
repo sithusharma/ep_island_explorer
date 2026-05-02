@@ -212,5 +212,19 @@ export const miamiMap: MapData = {
     // Highway to Orlando
     destinationSign("hwy-orlando", CX, CY - 840, "Orlando", "🎢", "orlando"),
   ],
-  items: [], npcs: [],
+  artifacts: [
+    {
+      id: "fake-id",
+      name: "Fake ID",
+      mapCoordinates: { x: CX + 100, y: CY + 70 },
+      requiredPlayer: "all",
+      stageRequired: 0,
+      icon: "🪪",
+      description: "A suspiciously convincing ID card. Now you can get into the ABC Store!",
+      hitbox: { w: 54, h: 54 },
+      advanceStageTo: 1,
+    }
+  ],
+  items: [],
+  npcs: [],
 };

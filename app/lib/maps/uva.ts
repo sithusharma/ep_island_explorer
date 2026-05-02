@@ -316,7 +316,20 @@ const scaryAirbnb: Entity = {
   },
   solid: true,
   hitbox:  { ox: -59, oy: -65, w: 118, h: 122 },
-  trigger: { type: "zone", name: "Scary Smelly Shitty AirBnB", hitbox: { ox: -82, oy: -80, w: 164, h: 158 } },
+  trigger: { type: "zone", name: "Scary Smelly Shitty AirBnB", hitbox: { ox: -120, oy: -120, w: 240, h: 240 } },
+};
+
+const pumpkin: Entity = {
+  id: "pumpkin", x: 690, y: 1380, layer: 3,
+  shapes: [
+    { type: "circle", x: 0, y: 0, r: 12, color: "#e65100" },
+    { type: "ellipse", x: -4, y: 0, rx: 6, ry: 11, color: "#ef6c00" },
+    { type: "ellipse", x: 4, y: 0, rx: 6, ry: 11, color: "#ef6c00" },
+    { type: "ellipse", x: 0, y: 0, rx: 5, ry: 12, color: "#ff9800" },
+    { type: "rect", x: -2, y: -16, w: 4, h: 6, color: "#33691e", radius: 1 }
+  ],
+  solid: true,
+  hitbox: { ox: -14, oy: -14, w: 28, h: 28 }
 };
 
 // ── Return trigger ─────────────────────────────────────────────────────────
@@ -362,7 +375,20 @@ export const uvaMap: MapData = {
     aldermanLibrary,
     jpjArena,
     scaryAirbnb,
+    pumpkin,
     returnTrigger,
   ],
   items: [], npcs: [],
+  artifacts: [
+    {
+      id: "condom",
+      name: "Condom",
+      mapCoordinates: { x: 790, y: 1180 },
+      requiredPlayer: "Riya",
+      stageRequired: 3,
+      icon: "/images/condom.jpg",
+      description: "A mysterious condom. Only Riya can pick it up.",
+      hitbox: { w: 64, h: 64 },
+    },
+  ],
 };

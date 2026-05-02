@@ -582,4 +582,16 @@ export const puertoRicoMap: MapData = {
   ],
   items: [],
   npcs: [],
+  artifacts: [
+    {
+      id: "beer",
+      name: "Beer",
+      mapCoordinates: { x: 2240, y: 2820 },
+      requiredPlayer: "Arav",
+      stageRequired: 5,
+      icon: "🍺",
+      description: "A cold beer. Arav needs this.",
+      hitbox: { w: 64, h: 64 },
+    },
+  ],
 };

@@ -134,6 +134,7 @@ export const cancunMap: MapData = {
       { type: "ellipse", x: -18, y: 220, rx: 54, ry: 140, color: "#fff9c4" },
     ],
     label: { text: "Beach", color: "#ff9800", font: "bold 18px sans-serif", offsetY: 0, shadow: { color: "rgba(255,255,255,0.8)", blur: 4 } },
+    trigger: { type: "zone", name: "Cancun Beach", hitbox: { ox: -82, oy: -340, w: 164, h: 680 } },
     },
 
     { id: "beach-palms", x: 0, y: 0, layer: 4, shapes: [

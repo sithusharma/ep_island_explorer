@@ -31,19 +31,21 @@ export function getMiloHint(currentStage: number, unlockedTokens: string[] = [])
         return "The fallen hold the next key. Head to the graveyard and pay your respects — go through Edge to learn who they were.";
       return "Look for the floofiest of them all.";
     case 3:
-      return "Head to UVA. Riya needs to find a condom and bring it to the creepy AirBnB. Don't party too hard once inside, or you might hurt yourself.";
+      return "One of us met the group later than usual, find the place we first met them";
     case 4:
-      return "Head to NYC 2.0. Sanjana needs to find the photo of her with crutches. Remember, don't drink too much when trying to talk to girls.";
+      return "Don't trust the people you party with. They might break your leg";
     case 5:
-      return "Get to Puerto Rico. Arav needs to pick up a beer can artifact and bring it to a girl.";
+      return "If your going to talk to girls dont be too drunk you might not remember it";
     case 6:
-      return "Everyone go find your own garages on VT island. Find the one ugly photo amongst all the nice pictures. Once found: get some drugs and enjoy the views at the smoke shop.";
+      return "Something appeared back on VT Island. Everyone go find your own parking spot garage and look through the photos. One ugly picture is hiding in there.";
     case 7:
-      return "The four original members of Edge need to find their specific photos to unlock their tokens.";
+      return "all the future and current edge roomies need to team up and find key photo in each year. the album in edge will be split into four years and that will have four folders.";
     case 8:
-      return "A moving truck has appeared outside Edge. Everyone needs to search across every island to find one cigarette for Arnav.";
+      return "Last but not least we have a certain pookie who loves to smoke. This pookie has to find the one picture in this game that he is smoking in. Good Luck!";
     case 9:
-      return "You did it. Head back to the Drillfield building to unlock the final prize.";
+      return "Now not forgetting us you guys need to find photo of us in every year of collegiate. Screw you guys this game took a long time and we need appreciation too!";
+    case 10:
+      return "Thanks for playing my game!";
     default:
       return "Welcome to VT Island! There is a prize we all have to work together to unlock. Explore the buildings and look at photos together.";
   }
