@@ -47,7 +47,6 @@ export default function LoginForm({ onLoginSuccess }: { onLoginSuccess: (user: a
   return (
     <div 
       className="flex flex-col items-center justify-center h-screen bg-cover bg-center text-white"
-      style={{ backgroundImage: "url('/images/group_photo.JPG')" }} 
     >
       {/* Removed backdrop-blur-sm here so the image stays sharp */}
       <div className="absolute inset-0 bg-black/60"></div>
