@@ -20,7 +20,7 @@ const FADE_DUR  = 0.5;   // seconds per fade direction
 
 const CAR_HALF_L = 19;
 const CAR_HALF_W = 11;
-const SOLID_PAD_PX = 3;
+const SOLID_PAD_PX = 10;
 const MILO_BLOCK_RADIUS = 28;
 const MILO_TALK_RADIUS = 90;
 

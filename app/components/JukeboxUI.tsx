@@ -12,6 +12,7 @@ const SONGS = [
   { id: "2kjolTLZ_Mg", title: "São Paulo",          artist: "Kaytranada" },
   { id: "HMqgVXSvwGo", title: "Fireball",           artist: "Pitbull" },
   { id: "GxldQ9eX2wo", title: "Until I Found You",  artist: "Stephen Sanchez" },
+  { id: "UWhY6kfKEts", title: "Brazil",             artist: "Declan McKenna" },
 ];
 
 export default function JukeboxUI({ onClose }: Props) {

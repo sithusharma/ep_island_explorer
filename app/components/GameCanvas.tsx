@@ -14,6 +14,7 @@ import DialogBox from "./DialogBox";
 import GraveyardUI from "./GraveyardUI";
 import InventoryBar from "./InventoryBar";
 import JukeboxUI from "./JukeboxUI";
+import MapOverlay from "./MapOverlay";
 import MemoryGallery from "./MemoryGallery";
 
 // ── Icon / accent helpers ─────────────────────────────────────────────────────
@@ -138,6 +139,8 @@ export default function GameCanvas({ user }: Props) {
   const [showFloofToken, setShowFloofToken] = useState(false);
   const [showFinalNote, setShowFinalNote] = useState(false);
   const [showFinalPhoto, setShowFinalPhoto] = useState(false);
+  const [finalTab, setFinalTab] = useState<"letter" | "couple">("letter");
+  const [showMap, setShowMap] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   // ── Canvas sizing ──────────────────────────────────────────────────────────
@@ -302,7 +305,7 @@ export default function GameCanvas({ user }: Props) {
       }
 
       if (activeTrigger.entityId === "abc-store" && !hasFakeId) {
-        setToast({ message: "ABC is locked. You need an ID. Where were we all when we got our fake ID?", tone: "warning", durationMs: 5000 });
+        setToast({ message: "ABC is locked. You need an ID. Where were we all when we used our fake ID?", tone: "warning", durationMs: 5000 });
         return;
       }
       if (activeTrigger.entityId === "abc-store" && hasFakeId) {
@@ -365,7 +368,7 @@ export default function GameCanvas({ user }: Props) {
         </div>
       )}
 
-      <InventoryBar items={inventoryItems} slots={8} />
+      <InventoryBar items={inventoryItems} slots={8} onMapOpen={() => setShowMap(true)} />
 
       {/* Logout */}
       <button
@@ -388,7 +391,7 @@ export default function GameCanvas({ user }: Props) {
       {showArtifactMode && (
         <div className="absolute inset-x-0 top-0 flex justify-center py-2 bg-amber-500/20 backdrop-blur-sm z-10">
           <span className="text-xs font-semibold text-amber-300 tracking-widest uppercase">
-            ✦ Artifact Mode — the journey lives on ✦
+            ✦ Artifact Mode — to many more memories and more to come ✦
           </span>
         </div>
       )}
@@ -444,7 +447,7 @@ export default function GameCanvas({ user }: Props) {
             if (activeGallery === "abc-store") {
               if (isKeyPhoto(imageName)) {
                 setToast({
-                  message: "You found the photo! I wonder where this photo took place at?",
+                  message: "hmm where did this photo occur?",
                   tone: "info",
                   durationMs: 6000,
                 });
@@ -531,83 +534,105 @@ export default function GameCanvas({ user }: Props) {
         />
       )}
 
-      {showFinalNote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-          <div className="w-full max-w-3xl rounded-3xl border border-amber-300/20 bg-neutral-950/95 px-8 py-8 shadow-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.35em] text-amber-300 mb-3">A Note From Us</p>
-            <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-2 text-sm leading-7 text-gray-200">
-              <p>
-                If you are reading this, then you actually made it. That means you drove around, looked through all the chaos,
-                found the weird clues, and stuck with the game all the way to the end.
-              </p>
-              <p>
-                We made this because these memories matter to us. Some of them are funny, some are embarrassing, some are
-                unbelievably cursed, and some are the kind of moments that only make sense because all of you were there for them.
-              </p>
-              <p>
-                Thank you for taking the time to play through it together. The whole point was never just to win. It was to go back
-                through the places, the photos, the stories, and the people that made everything feel like ours in the first place.
-              </p>
-              <p>
-                Even when life changes, people move, and everything gets messier than we expected, we still get to keep this version
-                of all of us somewhere. Loud, dumb, sentimental, and very online.
-              </p>
-              <p>
-                We hope this made you laugh, made you remember something good, and maybe made you feel a little loved too.
-              </p>
-              <p>
-                Seriously, thank you for playing our ridiculous game.
-              </p>
-              <p className="text-amber-200">
-                Love,
-                <br />
-                Us
-              </p>
-            </div>
-            <div className="mt-8 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowFinalNote(false)}
-                className="rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-gray-300 transition hover:bg-white/10"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowFinalNote(false);
-                  setShowFinalPhoto(true);
-                }}
-                className="rounded-full border border-amber-400/40 bg-amber-500/20 px-6 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/35"
-              >
-                See the final photo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {(showFinalNote || showFinalPhoto) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3">
+          <div className="relative w-full rounded-3xl border border-white/10 bg-neutral-950/97 shadow-2xl overflow-hidden"
+            style={{ maxHeight: "96vh", maxWidth: "min(1200px, 98vw)" }}>
 
-      {showFinalPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-6">
-          <div className="w-full max-w-4xl rounded-3xl border border-white/10 bg-neutral-950/95 px-8 py-8 shadow-2xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.35em] text-emerald-300 mb-3">The End</p>
-            <div className="mb-6 overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
-              <img
-                src="/images/group_photo.JPG"
-                alt="Final group photo"
-                className="h-auto w-full object-cover"
-              />
+            {/* Tab bar */}
+            <div className="flex border-b border-white/8">
+              <button
+                type="button"
+                onClick={() => setFinalTab("letter")}
+                className={[
+                  "flex-1 py-4 text-xs font-bold uppercase tracking-widest transition",
+                  finalTab === "letter"
+                    ? "text-amber-300 border-b-2 border-amber-400"
+                    : "text-gray-500 hover:text-gray-300",
+                ].join(" ")}
+              >
+                A Note From Us
+              </button>
+              <button
+                type="button"
+                onClick={() => setFinalTab("couple")}
+                className={[
+                  "flex-1 py-4 text-xs font-bold uppercase tracking-widest transition",
+                  finalTab === "couple"
+                    ? "text-rose-300 border-b-2 border-rose-400"
+                    : "text-gray-500 hover:text-gray-300",
+                ].join(" ")}
+              >
+                Made With Love
+              </button>
             </div>
-            <p className="mx-auto max-w-2xl text-base leading-7 text-gray-200">
-              Thanks for playing, for looking through the memories, and for making the stories worth saving in the first place.
-              We love you guys.
-            </p>
+
+            {/* Letter tab */}
+            {finalTab === "letter" && (
+              <div className="flex flex-col md:flex-row overflow-hidden" style={{ maxHeight: "calc(96vh - 57px)" }}>
+                {/* Text side */}
+                <div className="flex-1 overflow-y-auto px-10 py-10 space-y-5 text-base leading-8 text-gray-200 border-r border-white/6" style={{ minWidth: 0 }}>
+                  <p className="text-xs font-bold uppercase tracking-[0.35em] text-amber-300 mb-6">The End</p>
+                  <p>
+                    Hey guys!!! Congrats on finishing our little game, we hope you liked it ❤️
+                  </p>
+                  <p>
+                    We wanted to make something that shows all of our little adventures over the past few years. Something that we
+                    can look back to and show our families and kids in the future, and think about all the fun times we've had together.
+                  </p>
+                  <p>
+                    When Sithu and I came to VT it was just the two of us and we were so scared that we wouldn't find the right people
+                    or college wouldn't live up to the hype. I'm so glad we ended up with this little extended family that we have.
+                    The best thing about our group is that we know whatever situation or place we're in we will always manage to have
+                    the most fun.
+                  </p>
+                  <p>
+                    Love you guys so much, thank you for the most memorable 4 years! Make sure to keep in touch ❤️ I wonder what
+                    we're gonna do next….
+                  </p>
+                  <p className="text-amber-200 pt-2">
+                    Fuck you,
+                    <br />
+                    Monica and Sithu
+                  </p>
+                </div>
+                {/* Photo side */}
+                <div className="flex-1 flex flex-col items-center justify-center bg-black/30 px-6 py-6 gap-4" style={{ minWidth: 0 }}>
+                  <div className="w-full overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
+                    <img
+                      src="/images/group_photo.JPG"
+                      alt="Final group photo"
+                      className="w-full h-auto object-cover"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Couple tab */}
+            {finalTab === "couple" && (
+              <div className="flex flex-col items-center justify-center px-8 py-10 gap-6 overflow-y-auto"
+                style={{ maxHeight: "calc(96vh - 57px)" }}>
+                <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-rose-400/20 shadow-2xl">
+                  <img
+                    src="/images/couple.jpg"
+                    alt="Made by your favorite couple"
+                    className="w-full h-auto object-cover"
+                  />
+                </div>
+                <p className="text-center text-xl font-bold text-rose-300 tracking-wide">
+                  made by your favorite couple
+                </p>
+              </div>
+            )}
+
+            {/* Close button */}
             <button
               type="button"
-              onClick={() => setShowFinalPhoto(false)}
-              className="mt-8 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-8 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/30"
+              onClick={() => { setShowFinalNote(false); setShowFinalPhoto(false); setFinalTab("letter"); }}
+              className="absolute right-5 top-3.5 text-gray-500 hover:text-white transition text-lg leading-none"
             >
-              Close
+              ✕
             </button>
           </div>
         </div>
@@ -1019,6 +1044,11 @@ export default function GameCanvas({ user }: Props) {
             </p>
           </div>
         </div>
+      )}
+
+      {/* World Map */}
+      {showMap && (
+        <MapOverlay currentMapId={activeMapId} onClose={() => setShowMap(false)} />
       )}
     </div>
   );

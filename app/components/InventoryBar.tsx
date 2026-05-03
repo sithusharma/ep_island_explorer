@@ -14,13 +14,14 @@ export interface InventoryItem {
 interface InventoryBarProps {
   items: InventoryItem[];
   slots?: number;
+  onMapOpen?: () => void;
 }
 
 function isImageIcon(icon: string) {
   return icon.startsWith("/") || icon.startsWith("http://") || icon.startsWith("https://") || icon.startsWith("data:");
 }
 
-export default function InventoryBar({ items, slots = 10 }: InventoryBarProps) {
+export default function InventoryBar({ items, slots = 10, onMapOpen }: InventoryBarProps) {
   const [collapsed, setCollapsed] = useState(true);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const totalSlots = Math.max(5, Math.min(10, slots));
@@ -44,7 +45,11 @@ export default function InventoryBar({ items, slots = 10 }: InventoryBarProps) {
               <div key={`${item?.name ?? "empty"}-${index}`} className="group relative">
                 <button
                   type="button"
-                  onClick={() => item && setSelectedItem(item)}
+                  onClick={() => {
+                    if (!item) return;
+                    if (item.name === "Map" && onMapOpen) { onMapOpen(); return; }
+                    setSelectedItem(item);
+                  }}
                   className={[
                     "flex h-14 w-14 items-center justify-center rounded-xl border transition-colors",
                     item
