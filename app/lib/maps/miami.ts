@@ -131,7 +131,7 @@ export const miamiMap: MapData = {
     ],
     label: { text: "Airbnb", color: "#fff", font: "bold 16px sans-serif", offsetY: 40, shadow: { color: "#000", blur: 4 } },
     solid: true, hitbox: { ox: -60, oy: -50, w: 160, h: 80 },
-    trigger: { type: "zone", name: "Airbnb", hitbox: { ox: -70, oy: -60, w: 180, h: 100 } }
+    trigger: { type: "zone", name: "Airbnb", hitbox: { ox: -86, oy: -74, w: 212, h: 132 } }
     },
 
     // Mainland district west of the main street
@@ -200,7 +200,7 @@ export const miamiMap: MapData = {
     road("rd-mainland-south", [CX, CY + 170, CX - 380, CY + 170]),
     road("rd-mainland-lower", [CX, CY + 410, CX - 380, CY + 410]),
     road("rd-airport", [CX, CY + 560, CX - 280, CY + 560]),
-    { id: "fake-id-marker", x: CX + 170, y: CY - 150, layer: 2, shapes: [
+    { id: "fake-id-marker", x: CX + 170, y: CY - 240, layer: 2, shapes: [
       { type: "circle", x: 0, y: 0, r: 44, color: "rgba(255,255,255,0.16)" },
       { type: "circle", x: 0, y: 0, r: 34, color: "rgba(30,136,229,0.24)", stroke: "rgba(255,255,255,0.65)", lineWidth: 3 },
       { type: "text", x: 0, y: 1, text: "🪪", color: "#fff", font: "bold 28px sans-serif", align: "center" as CanvasTextAlign, baseline: "middle" as CanvasTextBaseline },
@@ -224,7 +224,7 @@ export const miamiMap: MapData = {
     {
       id: "fake-id",
       name: "Fake ID",
-      mapCoordinates: { x: CX + 170, y: CY - 150 },
+      mapCoordinates: { x: CX + 170, y: CY - 240 },
       requiredPlayer: "all",
       stageRequired: 0,
       icon: "🪪",

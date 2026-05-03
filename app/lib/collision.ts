@@ -6,6 +6,8 @@ import type { CarState, Entity, Boundary } from "./types";
 
 const CAR_HALF_L = 19;
 const CAR_HALF_W = 11;
+const TRIGGER_PAD = 24;
+const TRAVEL_TRIGGER_PAD = 16;
 
 // ── Car corners (rotated AABB) ────────────────────────────────────────────
 
@@ -65,12 +67,23 @@ export function isInBoundary(x: number, y: number, b: Boundary): boolean {
 // ── Trigger detection ─────────────────────────────────────────────────────
 
 export function findTrigger(car: CarState, entities: Entity[]): Entity | null {
+  const carPoints = [{ x: car.x, y: car.y }, ...getCarCorners(car)];
+
   for (const e of entities) {
     if (!e.trigger) continue;
     const hb = e.trigger.hitbox;
-    const bx = e.x + hb.ox;
-    const by = e.y + hb.oy;
-    if (ptInRect(car.x, car.y, bx, by, hb.w, hb.h)) return e;
+    const pad =
+      e.trigger.type === "highway" || e.trigger.type === "airport" || e.trigger.type === "ferry"
+        ? TRAVEL_TRIGGER_PAD
+        : TRIGGER_PAD;
+    const bx = e.x + hb.ox - pad;
+    const by = e.y + hb.oy - pad;
+    const bw = hb.w + pad * 2;
+    const bh = hb.h + pad * 2;
+
+    for (const point of carPoints) {
+      if (ptInRect(point.x, point.y, bx, by, bw, bh)) return e;
+    }
   }
   return null;
 }

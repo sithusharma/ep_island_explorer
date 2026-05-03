@@ -23,6 +23,7 @@ interface GalleryImage {
 interface FolderConfig {
   foldersToSearch?: string[];
   folderOptions?: { id: string; label: string }[];
+  directFiles?: string[];
 }
 
 function isKeyImageFile(name: string) {
@@ -163,7 +164,7 @@ function resolveFolders(mapId: string, locationId: string, subfolder: string | n
   }
 
   if (mapId === "miami") {
-    if (loc.includes("airbnb")) return { foldersToSearch: ["Miami/AirBnb"] };
+    if (loc.includes("airbnb")) return { foldersToSearch: ["Miami/Airbnb"] };
     if (loc.includes("yacht") || loc.includes("boat")) return { foldersToSearch: ["Miami/Boat"] };
     if (loc.includes("club")) return { foldersToSearch: ["Miami/Club"] };
     return { foldersToSearch: [`Miami/${locationId}`] };
@@ -184,8 +185,15 @@ function resolveFolders(mapId: string, locationId: string, subfolder: string | n
   }
 
   if (mapId === "nc") {
-    if (loc.includes("unc") || loc.includes("dean-dome") || loc.includes("franklin")) return { foldersToSearch: ["Chapel Hill"] };
+    if (loc.includes("monica")) return { directFiles: ["monica-house.png"] };
+    if (loc.includes("unc") || loc.includes("dean-dome") || loc.includes("franklin") || loc.includes("chapel")) return { foldersToSearch: ["ChapelHill"] };
     return { foldersToSearch: ["NCState"] };
+  }
+
+  if (mapId === "richmond") {
+    if (loc.includes("sanjana-house")) return { directFiles: ["sanjana-house.png"] };
+    if (loc.includes("fancy")) return { foldersToSearch: ["FancyBuildingRichmond"] };
+    return { foldersToSearch: [`Richmond/${locationId}`] };
   }
 
   // Fallback
@@ -244,6 +252,31 @@ export default function MemoryGallery({ locationId, mapId = "vt-island", onClose
         }
 
         setLoading(true);
+
+        if (config.directFiles?.length) {
+          const mappedFiles = config.directFiles.map((filePath) => {
+            const { data: publicUrlData } = supabase.storage.from("EP_Photos").getPublicUrl(filePath);
+            const { data: thumbUrlData } = supabase.storage.from("EP_Photos").getPublicUrl(filePath, {
+              transform: {
+                width: 420,
+                height: 280,
+                resize: "cover",
+                quality: 60,
+              },
+            });
+            const fileName = filePath.split("/").pop() ?? filePath;
+            return {
+              name: fileName,
+              url: publicUrlData.publicUrl,
+              thumbUrl: thumbUrlData.publicUrl,
+            };
+          });
+
+          galleryCache.set(cacheKey, mappedFiles);
+          setImages(mappedFiles);
+          return;
+        }
+
         const folderCandidates = config.foldersToSearch ?? ["test"];
         let data: { name: string }[] | null = null;
         let resolvedFolder = "test";

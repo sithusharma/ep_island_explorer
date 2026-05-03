@@ -445,8 +445,8 @@ const ziplineForest: Entity = {
 
 // ── Ferry docks on main island ─────────────────────────────────────────────
 
-const mainToVieques = ferryDock("dock-main-v", 3150, 2880, "Vieques",      4530, 3185);
-const mainToCulebra = ferryDock("dock-main-c", 2860, 2340, "Culebra",      4405, 1900);
+const mainToVieques = ferryDock("dock-main-v", 3150, 2880, "Vieques",      4530, 3330);
+const mainToCulebra = ferryDock("dock-main-c", 2860, 2340, "Culebra",      4405, 2050);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VIEQUES
@@ -492,7 +492,7 @@ const mosquitoBay: Entity = {
   trigger: { type: "zone", name: "Mosquito Bay", hitbox: { ox: -70, oy: -56, w: 140, h: 112 } },
 };
 
-const viequesToMain = ferryDock("dock-vieques", 4530, 3185, "Puerto Rico", 3150, 2880);
+const viequesToMain = ferryDock("dock-vieques", 4530, 3185, "Puerto Rico", 3150, 3030);
 
 // Vieques vehicles — golf carts + jeeps scattered around the island
 const viequesVehicles: Entity[] = [
@@ -528,7 +528,7 @@ const flamencoBeach: Entity = {
   trigger: { type: "zone", name: "Flamenco Beach", hitbox: { ox: -92, oy: -54, w: 184, h: 116 } },
 };
 
-const culebraToMain = ferryDock("dock-culebra", 4405, 1900, "Puerto Rico", 2860, 2340);
+const culebraToMain = ferryDock("dock-culebra", 4405, 1900, "Puerto Rico", 2860, 2490);
 
 // Culebra vehicles — golf carts + jeeps
 const culebraVehicles: Entity[] = [
